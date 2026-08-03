@@ -17,6 +17,18 @@ interface RigaInPreparazione extends RigaVista {
   numeroPortata: number
 }
 
+/** Raggruppa il menu per categoria cosi' il cameriere puo' scorrerlo per sezioni, non come un unico elenco piatto. */
+function raggruppaPerCategoria(menu: MenuItemResponse[]): [string, MenuItemResponse[]][] {
+  const gruppi = new Map<string, MenuItemResponse[]>()
+  for (const voce of menu) {
+    const categoria = voce.categoria ?? 'Senza categoria'
+    const voci = gruppi.get(categoria) ?? []
+    voci.push(voce)
+    gruppi.set(categoria, voci)
+  }
+  return [...gruppi.entries()].sort(([a], [b]) => a.localeCompare(b))
+}
+
 export function CameriereSessionePage() {
   // Il parametro di rotta e' garantito dalla route "/cameriere/sessioni/:sessioneId";
   // fissato qui come string (invece di string | undefined) cosi' che la
@@ -154,6 +166,7 @@ export function CameriereSessionePage() {
 
   const tavolo = tavoli?.find((t) => t.id === sessioneLocale.sessione.tavoloId)
   const tavoliLiberi = tavoli?.filter((t) => t.stato === 'LIBERO') ?? []
+  const menuPerCategoria = raggruppaPerCategoria(menu ?? [])
 
   return (
     <>
@@ -179,10 +192,14 @@ export function CameriereSessionePage() {
             <label htmlFor="voce-menu">Voce di menu</label>
             <select id="voce-menu" value={menuItemId} onChange={(e) => setMenuItemId(e.target.value ? Number(e.target.value) : '')}>
               <option value="">Seleziona…</option>
-              {menu?.map((voce) => (
-                <option key={voce.id} value={voce.id}>
-                  {voce.nome} (€ {voce.prezzo.toFixed(2)})
-                </option>
+              {menuPerCategoria.map(([categoria, voci]) => (
+                <optgroup key={categoria} label={categoria}>
+                  {voci.map((voce) => (
+                    <option key={voce.id} value={voce.id}>
+                      {voce.nome} (€ {voce.prezzo.toFixed(2)})
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

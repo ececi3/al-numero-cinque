@@ -7,11 +7,22 @@ autorizzazione per ruolo di ciascuna rotta).
 
 - `GET /api/tavoli` — elenco tavoli (per scegliere il tavolo in apertura sessione).
 - `GET /api/menu` — elenco voci menu disponibili (`?tutti=true` per includere anche quelle disattivate).
+  Ogni voce riporta anche `categoriaId`/`categoria` (nome), vedi `Categoria`
+  in docs/02-domain-model.md.
+- `GET /api/categorie` — elenco categorie di menu (per raggruppare il menu
+  lato cameriere e popolare il form voce di menu lato admin).
 
 ## Endpoint (dispositivo cameriere, ruolo `CAMERIERE`)
 
 - `POST /api/sessioni` — apre una sessione. Body: `id` (UUID
   client-generated), `tavoloId`, `numeroCoperti`. Idempotente sull'`id`.
+- `GET /api/sessioni/{id}` — stato completo di una sessione (comande, gruppi
+  e righe incluse). Usato come fallback quando la sessione non è nella cache
+  locale del dispositivo (vedi docs/06-offline-sync.md), e per il polling
+  periodico dello stato delle portate.
+- `GET /api/sessioni/per-tavolo/{tavoloId}` — come sopra, ma a partire dal
+  tavolo invece che dall'id sessione (risolve anche i tavoli aggregati). 404
+  se il tavolo non ha una sessione `APERTA`.
 - `POST /api/sessioni/{id}/chiudi` — chiude la sessione e libera il tavolo
   (e gli eventuali tavoli aggregati). 409 se esistono portate non ancora
   `SERVITO`.
@@ -29,15 +40,18 @@ autorizzazione per ruolo di ciascuna rotta).
 ## Endpoint (KDS — tablet cucina, ruolo `CUCINA`)
 
 - `GET /api/kds/coda` — stato corrente della coda cucina, ordinata per
-  `seq_coda` (righe in `IN_CODA`, `IN_PREP`, `PRONTO`).
+  `seq_coda` (righe in `IN_CODA`, `IN_PREP`, `PRONTO`). Ogni gruppo include
+  le righe d'ordine (`menuItemId`, `nome`, `quantita`, `note`): il cuoco deve
+  vedere cosa preparare, non solo l'id comanda/portata.
 - `POST /api/kds/gruppi/{id}/inizia-preparazione`
 - `POST /api/kds/gruppi/{id}/pronto` — chiama `CoursingService.segnaPronto`.
 - `POST /api/kds/gruppi/{id}/servito`
 - **Feed WebSocket** (`/ws-kds`, STOMP su `/topic/kds`): alternativa al
   polling di `/api/kds/coda`, alimentata dagli eventi outbox via Kafka (vedi
-  sotto). Handshake autenticato da `KdsHandshakeAuthInterceptor` (JWT via
-  header `Authorization` o query param `access_token`, ruolo `CUCINA`
-  richiesto).
+  sotto), righe incluse nel payload. Handshake autenticato da
+  `KdsHandshakeAuthInterceptor` (JWT via header `Authorization` o query
+  param `access_token`, ruolo `CUCINA` richiesto — per questo il dispositivo
+  cameriere non può riusare questo canale, vedi docs/06-offline-sync.md).
 
 ## Endpoint (autenticazione, `/api/auth/**`)
 
@@ -54,6 +68,12 @@ autorizzazione per ruolo di ciascuna rotta).
 - `POST /api/admin/tavoli` — crea un tavolo (409 se `numero` già in uso).
 - `POST /api/admin/menu`, `POST /api/admin/menu/{id}/attiva`,
   `POST /api/admin/menu/{id}/disattiva` — gestione voci menu.
+- `DELETE /api/admin/menu/{id}` — elimina una voce di menu. 409 se la voce
+  è referenziata da almeno una `RigaOrdine` (append-only per storico/analytics,
+  vedi docs/02-domain-model.md): in quel caso va disattivata, non eliminata.
+- `POST /api/admin/categorie`, `DELETE /api/admin/categorie/{id}` — gestione
+  categorie di menu. La `DELETE` fallisce con 409 se almeno una voce di menu
+  è ancora collegata alla categoria.
 
 ## Eventi outbox (`aggregate_type` / `event_type`)
 

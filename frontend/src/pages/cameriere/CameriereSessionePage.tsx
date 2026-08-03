@@ -15,6 +15,7 @@ import {
   aggiungiComandaLocale,
   idrataSessioneLocaleDaServer,
   leggiSessioneLocale,
+  sincronizzaComandeDaServer,
   type ComandaVista,
   type RigaVista,
 } from '../../offline/sessioneLocale'
@@ -70,6 +71,35 @@ export function CameriereSessionePage() {
       )
       .finally(() => setRecuperoInCorso(false))
   }, [sessioneId, sessioneLocale])
+
+  // Lo stato di ogni portata (es. "pronta", "servita") arriva dalla cucina in
+  // tempo reale via WebSocket, ma quel canale e' riservato al ruolo CUCINA
+  // (vedi KdsHandshakeAuthInterceptor): il dispositivo cameriere non puo'
+  // ascoltarlo. Un polling periodico e' il modo piu' semplice per non
+  // lasciare il cameriere con badge di stato bloccati al momento dell'invio
+  // (es. "IN_CODA" anche quando la cucina ha gia' servito la portata).
+  // Nessuna richiesta finche' l'apertura sessione stessa e' pendente (offline):
+  // la sessione non esiste ancora lato server.
+  useEffect(() => {
+    if (!sessioneId || !sessioneLocale || sessioneLocale.pendente) return
+    const intervallo = setInterval(() => {
+      api
+        .get<SessioneDettaglioResponse>(`/api/sessioni/${sessioneId}`)
+        .then((dettaglio) => {
+          sincronizzaComandeDaServer(sessioneId, dettaglio.comande)
+          setSessioneLocale(leggiSessioneLocale(sessioneId))
+        })
+        .catch(() => {
+          // Rete assente o momentaneamente irraggiungibile: si ritenta al
+          // prossimo giro, senza disturbare il cameriere con un errore.
+        })
+    }, 10000)
+    return () => clearInterval(intervallo)
+    // sessioneLocale intenzionalmente escluso: dipende solo da .pendente
+    // (già in dep array) per avviare/fermare il polling, non deve riavviare
+    // l'intervallo ad ogni comanda locale aggiunta o ad ogni giro di polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessioneId, sessioneLocale?.pendente])
 
   const [righeInPreparazione, setRigheInPreparazione] = useState<RigaInPreparazione[]>([])
   const [menuItemId, setMenuItemId] = useState<number | ''>('')

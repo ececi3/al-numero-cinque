@@ -44,3 +44,26 @@ DB monotone, senza bisogno di logiche di riordino a posteriori.
   tutte operazioni lato cucina/server, il KDS è per design sempre online
   (tablet fisso in cucina, non un dispositivo mobile).
 - Chiusura sessione e generazione del conto.
+
+## Visibilità dello stato cucina lato cameriere
+
+Il feed WebSocket del KDS (`/ws-kds`) è riservato al ruolo `CUCINA`
+(`KdsHandshakeAuthInterceptor`), quindi il dispositivo cameriere non può
+ascoltarlo: `CameriereSessionePage` fa **polling** di
+`GET /api/sessioni/{id}` ogni 10 secondi (solo quando la sessione è già
+sincronizzata, non mentre l'apertura stessa è pendente offline) per
+riallineare lo stato di ogni portata (es. `IN_CODA` → `PRONTO` →
+`SERVITO`), che altrimenti resterebbe fermo allo snapshot preso al momento
+dell'invio o del recupero cross-device. Le comande ancora in coda di sync
+offline (non ancora sul server) non vengono toccate dal polling.
+
+## Recupero sessione da un altro dispositivo
+
+L'indice tavolo → sessione (`frontend/src/offline/indiceTavoli.ts`) vive
+solo nel `localStorage` del dispositivo che ha aperto la sessione. Un
+secondo dispositivo che clicca un tavolo occupato non trovato in locale
+recupera lo stato completo dal server tramite
+`GET /api/sessioni/per-tavolo/{tavoloId}` (risolve anche i tavoli
+aggregati) o `GET /api/sessioni/{id}` per accesso diretto via URL; è
+un'operazione online-only, coerente con le altre operazioni di
+coordinamento server elencate sopra.

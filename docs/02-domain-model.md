@@ -6,7 +6,8 @@
 |---|---|---|---|
 | `Utente` | Long (auto) | online-only | `ruolo`: CAMERIERE / CUCINA / ADMIN |
 | `Tavolo` | Long (auto) | online-only | `stato`: LIBERO / OCCUPATO |
-| `MenuItem` | Long (auto) | online-only | `inviaInCucina` è la fonte di verità per il routing cucina |
+| `MenuItem` | Long (auto) | online-only | `inviaInCucina` è la fonte di verità per il routing cucina; `categoria` è una FK verso `Categoria` (opzionale) |
+| `Categoria` | Long (auto) | online-only | categoria di menu gestita da admin (create/elimina), `nome` univoco |
 | `Sessione` | UUID (client) | append-capable | `numeroCoperti` obbligatorio (richiesto per analytics), riferisce un `Tavolo` |
 | `Comanda` | UUID (client) | append-capable | `seqServer` assegnato **solo** alla registrazione (online) |
 | `GruppoInvio` | Long (auto) | online-only | rappresenta una "portata"; stato macchina a stati |

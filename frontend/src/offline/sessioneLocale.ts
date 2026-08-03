@@ -5,7 +5,7 @@
 // GruppoInvioResponse non porta le righe: il dettaglio articoli/quantita'
 // visualizzato qui e' quello inserito dal cameriere, lo stato del gruppo
 // (se la comanda e' stata sincronizzata) viene invece dalla risposta server.
-import type { ApriSessioneRequest, GruppoInvioResponse, SessioneDettaglioResponse } from '../api/types'
+import type { ApriSessioneRequest, ComandaResponse, GruppoInvioResponse, SessioneDettaglioResponse } from '../api/types'
 
 export interface RigaVista {
   menuItemId: number
@@ -63,6 +63,39 @@ export function aggiungiComandaLocale(sessioneId: string, comanda: ComandaVista)
   const esistente = tutte[sessioneId]
   if (!esistente) return
   esistente.comande = [...esistente.comande, comanda]
+  scriviTutte(tutte)
+}
+
+/**
+ * Riallinea le comande gia' sincronizzate con lo stato del server (stato di
+ * ogni gruppo incluso): il cameriere non ha altrimenti alcun modo di vedere
+ * che la cucina ha lavorato una portata, dato che comanda.statiGruppi era
+ * finora uno snapshot preso una tantum all'invio/idratazione e mai piu'
+ * aggiornato (vedi CameriereSessionePage, polling periodico). Le comande
+ * ancora pendenti (in coda offline, non ancora sul server) restano intatte.
+ */
+export function sincronizzaComandeDaServer(sessioneId: string, comandeServer: ComandaResponse[]) {
+  const tutte = leggiTutte()
+  const esistente = tutte[sessioneId]
+  if (!esistente) return
+
+  const comandePendenti = esistente.comande.filter((c) => c.pendente)
+  const comandeSincronizzate: ComandaVista[] = comandeServer.map((comanda) => ({
+    id: comanda.id,
+    pendente: false,
+    statiGruppi: comanda.gruppi,
+    gruppi: comanda.gruppi.map((gruppo) => ({
+      numeroPortata: gruppo.numeroPortata,
+      righe: gruppo.righe.map((riga) => ({
+        menuItemId: riga.menuItemId,
+        nome: riga.nome,
+        quantita: riga.quantita,
+        note: riga.note,
+      })),
+    })),
+  }))
+
+  esistente.comande = [...comandeSincronizzate, ...comandePendenti]
   scriviTutte(tutte)
 }
 

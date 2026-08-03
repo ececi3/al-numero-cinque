@@ -97,12 +97,19 @@ export interface SincronizzaComandaRequest {
   gruppi: GruppoRequest[]
 }
 
+export interface RigaKdsResponse {
+  nome: string
+  quantita: number
+  note?: string
+}
+
 export interface GruppoInvioResponse {
   id: number
   comandaId: string
   numeroPortata: number
   stato: StatoGruppo
   seqCoda: number | null
+  righe: RigaKdsResponse[]
 }
 
 export interface ComandaResponse {

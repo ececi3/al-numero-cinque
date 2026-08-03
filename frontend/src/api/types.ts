@@ -132,6 +132,15 @@ export interface ComandaResponse {
   gruppi: GruppoInvioResponse[]
 }
 
+export interface ComandaDettaglioResponse {
+  id: string
+  tavoloNumero: string
+  cameriereId: number
+  cameriereUsername: string | null
+  creataAt: string
+  gruppi: GruppoInvioResponse[]
+}
+
 export interface SessioneDettaglioResponse {
   id: string
   tavoloId: number

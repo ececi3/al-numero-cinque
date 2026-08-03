@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Client } from '@stomp/stompjs'
 import { api, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
-import type { GruppoInvioResponse, RigaKdsResponse, StatoGruppo } from '../../api/types'
+import type { ComandaDettaglioResponse, GruppoInvioResponse, RigaKdsResponse, StatoGruppo } from '../../api/types'
 
 interface EventoKds {
   gruppoInvioId: number
@@ -26,6 +26,11 @@ export function KdsPage() {
   const [connesso, setConnesso] = useState(false)
   const [azioneInCorsoId, setAzioneInCorsoId] = useState<number | null>(null)
   const [erroreAzione, setErroreAzione] = useState<string | null>(null)
+
+  const [comandaSelezionataId, setComandaSelezionataId] = useState<string | null>(null)
+  const [dettaglioComanda, setDettaglioComanda] = useState<ComandaDettaglioResponse | null>(null)
+  const [dettaglioInCorso, setDettaglioInCorso] = useState(false)
+  const [erroreDettaglio, setErroreDettaglio] = useState<string | null>(null)
 
   useEffect(() => {
     api
@@ -93,6 +98,27 @@ export function KdsPage() {
     }
   }
 
+  async function apriDettaglioComanda(comandaId: string) {
+    setComandaSelezionataId(comandaId)
+    setDettaglioComanda(null)
+    setErroreDettaglio(null)
+    setDettaglioInCorso(true)
+    try {
+      const dettaglio = await api.get<ComandaDettaglioResponse>(`/api/kds/comande/${comandaId}`)
+      setDettaglioComanda(dettaglio)
+    } catch (err) {
+      setErroreDettaglio(err instanceof ApiError ? err.message : 'Errore di rete')
+    } finally {
+      setDettaglioInCorso(false)
+    }
+  }
+
+  function chiudiDettaglioComanda() {
+    setComandaSelezionataId(null)
+    setDettaglioComanda(null)
+    setErroreDettaglio(null)
+  }
+
   return (
     <>
       <h1>
@@ -114,7 +140,12 @@ export function KdsPage() {
               </h2>
               {gruppi.length === 0 && <p style={{ color: 'var(--colore-testo-debole)' }}>—</p>}
               {gruppi.map((gruppo) => (
-                <div key={gruppo.id} className="gruppo-kds">
+                <div
+                  key={gruppo.id}
+                  className="gruppo-kds cliccabile"
+                  onClick={() => apriDettaglioComanda(gruppo.comandaId)}
+                  title="Vedi tutte le portate di questa comanda"
+                >
                   <strong>Comanda {gruppo.comandaId.slice(0, 8)}</strong>
                   <p style={{ margin: '0.35rem 0' }}>Portata {gruppo.numeroPortata}</p>
                   <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.2rem' }}>
@@ -128,7 +159,10 @@ export function KdsPage() {
                     <button
                       className="pulsante piccolo"
                       disabled={azioneInCorsoId === gruppo.id}
-                      onClick={() => eseguiTransizione(gruppo, colonna.azione!.path)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        eseguiTransizione(gruppo, colonna.azione!.path)
+                      }}
                     >
                       {colonna.azione.label}
                     </button>
@@ -139,6 +173,45 @@ export function KdsPage() {
           )
         })}
       </div>
+
+      {comandaSelezionataId && (
+        <div className="sfondo-modale" onClick={chiudiDettaglioComanda}>
+          <div className="modale" onClick={(e) => e.stopPropagation()}>
+            <div className="modale-intestazione">
+              <h2 style={{ margin: 0 }}>Comanda {comandaSelezionataId.slice(0, 8)}</h2>
+              <button className="pulsante secondario piccolo" onClick={chiudiDettaglioComanda}>
+                Chiudi
+              </button>
+            </div>
+            {dettaglioInCorso && <p>Caricamento…</p>}
+            {erroreDettaglio && <div className="messaggio-errore">{erroreDettaglio}</div>}
+            {dettaglioComanda && (
+              <>
+                <p style={{ color: 'var(--colore-testo-debole)', margin: '0 0 1rem' }}>
+                  Tavolo {dettaglioComanda.tavoloNumero} — cameriere {dettaglioComanda.cameriereUsername ?? '—'} — inviata{' '}
+                  {new Date(dettaglioComanda.creataAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                {dettaglioComanda.gruppi
+                  .slice()
+                  .sort((a, b) => a.numeroPortata - b.numeroPortata)
+                  .map((gruppo) => (
+                    <div key={gruppo.id} className="gruppo-kds">
+                      <strong>Portata {gruppo.numeroPortata}</strong>{' '}
+                      <span className={`badge ${gruppo.stato.toLowerCase().replace('_', '-')}`}>{gruppo.stato}</span>
+                      <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.2rem' }}>
+                        {gruppo.righe.map((riga, i) => (
+                          <li key={i}>
+                            {riga.quantita}× {riga.nome} {riga.note && `(${riga.note})`}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

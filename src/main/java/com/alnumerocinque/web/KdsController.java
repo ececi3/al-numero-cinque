@@ -3,10 +3,12 @@ package com.alnumerocinque.web;
 import com.alnumerocinque.domain.StatoGruppo;
 import com.alnumerocinque.repository.GruppoInvioRepository;
 import com.alnumerocinque.service.CoursingService;
+import com.alnumerocinque.web.dto.ComandaDettaglioResponse;
 import com.alnumerocinque.web.dto.GruppoInvioResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Endpoint per il tablet cucina (KDS). Il tablet e' per design sempre
@@ -33,6 +35,17 @@ public class KdsController {
                 .stream()
                 .map(GruppoInvioResponse::of)
                 .toList();
+    }
+
+    /**
+     * Dettaglio completo di una comanda (tutte le portate con stato, tavolo,
+     * cameriere, orario): la coda mostra una card per portata, spesso in
+     * colonne diverse, senza modo di vedere insieme quelle della stessa
+     * comanda.
+     */
+    @GetMapping("/comande/{id}")
+    public ComandaDettaglioResponse dettaglioComanda(@PathVariable UUID id) {
+        return coursingService.dettaglioComanda(id);
     }
 
     @PostMapping("/gruppi/{id}/inizia-preparazione")

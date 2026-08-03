@@ -351,3 +351,41 @@ th {
   margin-bottom: 0.75rem;
   background: var(--colore-superficie);
 }
+
+.gruppo-kds.cliccabile {
+  cursor: pointer;
+}
+
+.gruppo-kds.cliccabile:hover {
+  border-color: var(--colore-primario);
+}
+
+.sfondo-modale {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 25, 23, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.modale {
+  background: var(--colore-superficie);
+  border-radius: var(--raggio);
+  box-shadow: var(--ombra);
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modale-intestazione {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}

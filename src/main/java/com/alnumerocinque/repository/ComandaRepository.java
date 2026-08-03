@@ -4,6 +4,8 @@ import com.alnumerocinque.domain.Comanda;
 import com.alnumerocinque.domain.Sessione;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,4 +28,15 @@ public interface ComandaRepository extends JpaRepository<Comanda, UUID> {
     // (SessioneService.chiudiSessione, SessioneService.dettaglio).
     @EntityGraph(attributePaths = {"gruppi"})
     List<Comanda> findBySessione(Sessione sessione);
+
+    // Query esplicita (non "findWithTavoloEGruppiById", per lo stesso motivo
+    // di ambiguita' del parser di query derivation gia' annotato su
+    // findById sopra). Niente "gruppi.righe" nell'entity graph: fetchare
+    // insieme due collezioni-List annidate (gruppi -> righe) causa
+    // MultipleBagFetchException in Hibernate; "righe"/"menuItem" restano
+    // percio' lazy, caricati on-demand dentro il metodo @Transactional
+    // chiamante (CoursingService.dettaglioComanda).
+    @EntityGraph(attributePaths = {"sessione", "sessione.tavolo", "gruppi"})
+    @Query("select c from Comanda c where c.id = :id")
+    Optional<Comanda> trovaConTavoloEGruppiById(@Param("id") UUID id);
 }

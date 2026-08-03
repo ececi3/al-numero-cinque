@@ -1,7 +1,9 @@
 package com.alnumerocinque.web;
 
 import com.alnumerocinque.domain.RuoloUtente;
+import com.alnumerocinque.domain.Tavolo;
 import com.alnumerocinque.domain.Utente;
+import com.alnumerocinque.repository.TavoloRepository;
 import com.alnumerocinque.repository.UtenteRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,9 +17,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -40,6 +42,9 @@ class AdminUtenteControllerIntegrationTest {
 
     @Autowired
     private UtenteRepository utenteRepository;
+
+    @Autowired
+    private TavoloRepository tavoloRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -134,5 +139,58 @@ class AdminUtenteControllerIntegrationTest {
         mockMvc.perform(get("/api/admin/utenti").header("Authorization", "Bearer " + tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.username == 'admin.test')]").exists());
+    }
+
+    @Test
+    void eliminaUtente_disattivatoESenzaStorico_loRimuoveDefinitivamente() throws Exception {
+        String tokenAdmin = login("admin.test");
+        Utente daEliminare = utenteRepository.save(
+                new Utente("da.eliminare", passwordEncoder.encode(PASSWORD), RuoloUtente.CAMERIERE));
+
+        mockMvc.perform(post("/api/admin/utenti/" + daEliminare.getId() + "/disattiva")
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/admin/utenti/" + daEliminare.getId())
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/admin/utenti").header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.username == 'da.eliminare')]").doesNotExist());
+    }
+
+    @Test
+    void eliminaUtente_ancoraAttivo_restituisce409() throws Exception {
+        String tokenAdmin = login("admin.test");
+        Utente attivo = utenteRepository.save(
+                new Utente("ancora.attivo", passwordEncoder.encode(PASSWORD), RuoloUtente.CAMERIERE));
+
+        mockMvc.perform(delete("/api/admin/utenti/" + attivo.getId())
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void eliminaUtente_conStoricoSessioni_restituisce409() throws Exception {
+        String tokenAdmin = login("admin.test");
+        Tavolo tavolo = tavoloRepository.save(new Tavolo("UT1"));
+        String tokenCameriereConStorico = login("cameriere.noadmin");
+
+        mockMvc.perform(post("/api/sessioni")
+                        .header("Authorization", "Bearer " + tokenCameriereConStorico)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", UUID.randomUUID(), "tavoloId", tavolo.getId(), "numeroCoperti", 2))))
+                .andExpect(status().isOk());
+
+        Long cameriereId = utenteRepository.findByUsername("cameriere.noadmin").orElseThrow().getId();
+        mockMvc.perform(post("/api/admin/utenti/" + cameriereId + "/disattiva")
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/admin/utenti/" + cameriereId)
+                        .header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isConflict());
     }
 }

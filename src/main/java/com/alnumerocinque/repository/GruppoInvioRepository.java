@@ -21,6 +21,7 @@ public interface GruppoInvioRepository extends JpaRepository<GruppoInvio, Long> 
     Optional<GruppoInvio> findById(Long id);
 
     /** Coda cucina corrente, ordinata per ordine di ingresso (fire). */
+    @EntityGraph(attributePaths = {"righe", "righe.menuItem"})
     List<GruppoInvio> findByStatoInOrderBySeqCodaAsc(Collection<StatoGruppo> stati);
 
     /**

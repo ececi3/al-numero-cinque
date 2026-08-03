@@ -1,7 +1,9 @@
 package com.alnumerocinque.web.dto;
 
 import com.alnumerocinque.domain.GruppoInvio;
+import com.alnumerocinque.domain.RigaOrdine;
 
+import java.util.List;
 import java.util.UUID;
 
 public record GruppoInvioResponse(
@@ -9,7 +11,8 @@ public record GruppoInvioResponse(
         UUID comandaId,
         int numeroPortata,
         String stato,
-        Long seqCoda
+        Long seqCoda,
+        List<RigaKdsResponse> righe
 ) {
     public static GruppoInvioResponse of(GruppoInvio gruppo) {
         return new GruppoInvioResponse(
@@ -17,7 +20,14 @@ public record GruppoInvioResponse(
                 gruppo.getComanda().getId(),
                 gruppo.getNumeroPortata(),
                 gruppo.getStato().name(),
-                gruppo.getSeqCoda()
+                gruppo.getSeqCoda(),
+                gruppo.getRighe().stream().map(RigaKdsResponse::of).toList()
         );
+    }
+
+    public record RigaKdsResponse(String nome, int quantita, String note) {
+        public static RigaKdsResponse of(RigaOrdine riga) {
+            return new RigaKdsResponse(riga.getMenuItem().getNome(), riga.getQuantita(), riga.getNote());
+        }
     }
 }

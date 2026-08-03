@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Client } from '@stomp/stompjs'
 import { api, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
-import type { GruppoInvioResponse, StatoGruppo } from '../../api/types'
+import type { GruppoInvioResponse, RigaKdsResponse, StatoGruppo } from '../../api/types'
 
 interface EventoKds {
   gruppoInvioId: number
@@ -10,6 +10,7 @@ interface EventoKds {
   numeroPortata: number
   seqCoda: number | null
   stato: StatoGruppo
+  righe: RigaKdsResponse[]
 }
 
 const COLONNE: { stato: StatoGruppo; titolo: string; azione?: { label: string; path: string } }[] = [
@@ -48,6 +49,7 @@ export function KdsPage() {
           numeroPortata: evento.numeroPortata,
           stato: evento.stato,
           seqCoda: evento.seqCoda,
+          righe: evento.righe,
         }
         return [...senzaQuesto, aggiornato].sort((a, b) => (a.seqCoda ?? 0) - (b.seqCoda ?? 0))
       })
@@ -115,6 +117,13 @@ export function KdsPage() {
                 <div key={gruppo.id} className="gruppo-kds">
                   <strong>Comanda {gruppo.comandaId.slice(0, 8)}</strong>
                   <p style={{ margin: '0.35rem 0' }}>Portata {gruppo.numeroPortata}</p>
+                  <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.2rem' }}>
+                    {gruppo.righe.map((riga, i) => (
+                      <li key={i}>
+                        {riga.quantita}× {riga.nome} {riga.note && `(${riga.note})`}
+                      </li>
+                    ))}
+                  </ul>
                   {colonna.azione && (
                     <button
                       className="pulsante piccolo"

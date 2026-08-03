@@ -70,7 +70,7 @@ class ComandaSyncControllerIntegrationTest {
         tavoloSecondarioId = tavoloSecondario.getId();
 
         MenuItem menuItem = menuItemRepository.save(
-                new MenuItem("Bruschette", "antipasto", new BigDecimal("6.50"), "antipasti", true));
+                new MenuItem("Bruschette", "antipasto", new BigDecimal("6.50"), null, true));
         menuItemId = menuItem.getId();
 
         Utente cameriere = new Utente("cameriere.test", passwordEncoder.encode(PASSWORD_IN_CHIARO), RuoloUtente.CAMERIERE);

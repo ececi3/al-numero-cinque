@@ -116,6 +116,14 @@ class TavoloMenuControllerIntegrationTest {
         String tokenAdmin = login("admin.tavmenu");
         String tokenCameriere = login("cameriere.tavmenu");
 
+        String rispostaCategoria = mockMvc.perform(post("/api/admin/categorie")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("nome", "dolci"))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long categoriaId = objectMapper.readTree(rispostaCategoria).get("id").asLong();
+
         String risposta = mockMvc.perform(post("/api/admin/menu")
                         .header("Authorization", "Bearer " + tokenAdmin)
                         .contentType("application/json")
@@ -123,10 +131,11 @@ class TavoloMenuControllerIntegrationTest {
                                 "nome", "Tiramisu'",
                                 "descrizione", "dolce della casa",
                                 "prezzo", new BigDecimal("6.00"),
-                                "categoria", "dolci",
+                                "categoriaId", categoriaId,
                                 "inviaInCucina", false))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.nome").value("Tiramisu'"))
+                .andExpect(jsonPath("$.categoria").value("dolci"))
                 .andExpect(jsonPath("$.disponibile").value(true))
                 .andReturn().getResponse().getContentAsString();
 

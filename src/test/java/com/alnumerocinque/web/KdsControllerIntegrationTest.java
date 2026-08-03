@@ -64,7 +64,7 @@ class KdsControllerIntegrationTest {
     void setUp() {
         tavoloId = tavoloRepository.save(new Tavolo("T9")).getId();
         menuItemId = menuItemRepository.save(
-                new MenuItem("Cotoletta alla milanese", "secondo", new BigDecimal("14.00"), "secondi", true)).getId();
+                new MenuItem("Cotoletta alla milanese", "secondo", new BigDecimal("14.00"), null, true)).getId();
 
         utenteRepository.save(new Utente("cameriere.kds", passwordEncoder.encode(PASSWORD), RuoloUtente.CAMERIERE));
         utenteRepository.save(new Utente("cucina.kds", passwordEncoder.encode(PASSWORD), RuoloUtente.CUCINA));

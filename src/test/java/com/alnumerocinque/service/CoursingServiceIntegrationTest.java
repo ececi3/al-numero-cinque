@@ -64,10 +64,10 @@ class CoursingServiceIntegrationTest {
         tavolo = new Tavolo("T5");
         entityManager.persist(tavolo);
 
-        menuItem = new MenuItem("Tagliatelle al ragu'", "primo piatto", new BigDecimal("12.00"), "primi", true);
+        menuItem = new MenuItem("Tagliatelle al ragu'", "primo piatto", new BigDecimal("12.00"), null, true);
         entityManager.persist(menuItem);
 
-        bevanda = new MenuItem("Acqua naturale", "bevanda", new BigDecimal("2.00"), "bevande", false);
+        bevanda = new MenuItem("Acqua naturale", "bevanda", new BigDecimal("2.00"), null, false);
         entityManager.persist(bevanda);
 
         entityManager.flush();

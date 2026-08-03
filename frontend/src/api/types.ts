@@ -46,11 +46,21 @@ export interface CreaTavoloRequest {
   numero: string
 }
 
+export interface CategoriaResponse {
+  id: number
+  nome: string
+}
+
+export interface CreaCategoriaRequest {
+  nome: string
+}
+
 export interface MenuItemResponse {
   id: number
   nome: string
   descrizione: string | null
   prezzo: number
+  categoriaId: number | null
   categoria: string | null
   inviaInCucina: boolean
   disponibile: boolean
@@ -60,7 +70,7 @@ export interface CreaMenuItemRequest {
   nome: string
   descrizione?: string
   prezzo: number
-  categoria?: string
+  categoriaId?: number
   inviaInCucina: boolean
 }
 

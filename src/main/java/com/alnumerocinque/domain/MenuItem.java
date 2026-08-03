@@ -31,8 +31,13 @@ public class MenuItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal prezzo;
 
-    @Column(length = 64)
-    private String categoria;
+    // EAGER: relazione verso una tabella di lookup piccola (categorie), letta
+    // ad ogni MenuItemResponse.of(); evita di dover annotare @EntityGraph su
+    // ogni query di MenuItemRepository per scongiurare LazyInitializationException
+    // fuori transazione (open-in-view e' disattivato, vedi application.yml).
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoria;
 
     @Column(name = "invia_in_cucina", nullable = false)
     private boolean inviaInCucina = true;
@@ -43,7 +48,7 @@ public class MenuItem {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
-    public MenuItem(String nome, String descrizione, BigDecimal prezzo, String categoria, boolean inviaInCucina) {
+    public MenuItem(String nome, String descrizione, BigDecimal prezzo, Categoria categoria, boolean inviaInCucina) {
         this.nome = nome;
         this.descrizione = descrizione;
         this.prezzo = prezzo;

@@ -9,6 +9,7 @@ public record MenuItemResponse(
         String nome,
         String descrizione,
         BigDecimal prezzo,
+        Long categoriaId,
         String categoria,
         boolean inviaInCucina,
         boolean disponibile
@@ -19,7 +20,8 @@ public record MenuItemResponse(
                 menuItem.getNome(),
                 menuItem.getDescrizione(),
                 menuItem.getPrezzo(),
-                menuItem.getCategoria(),
+                menuItem.getCategoria() != null ? menuItem.getCategoria().getId() : null,
+                menuItem.getCategoria() != null ? menuItem.getCategoria().getNome() : null,
                 menuItem.isInviaInCucina(),
                 menuItem.isDisponibile()
         );

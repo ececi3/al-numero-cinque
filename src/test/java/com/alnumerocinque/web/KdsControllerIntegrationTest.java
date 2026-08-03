@@ -114,4 +114,60 @@ class KdsControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].righe[0].quantita").value(2))
                 .andExpect(jsonPath("$[0].righe[0].note").value("cottura media"));
     }
+
+    /**
+     * Il dettaglio deve correlare TUTTE le portate della stessa comanda (qui
+     * due: la prima IN_CODA, la seconda ancora TRATTENUTO in attesa del
+     * fire-on-ready), cosa che le card per-portata della coda non permettono
+     * da sole, oltre a riportare tavolo e cameriere.
+     */
+    @Test
+    void dettaglioComanda_restituisceTutteLePortateConTavoloECameriere() throws Exception {
+        String tokenCameriere = login("cameriere.kds");
+        String tokenCucina = login("cucina.kds");
+
+        UUID sessioneId = UUID.randomUUID();
+        mockMvc.perform(post("/api/sessioni")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", sessioneId, "tavoloId", tavoloId, "numeroCoperti", 2))))
+                .andExpect(status().isOk());
+
+        UUID comandaId = UUID.randomUUID();
+        mockMvc.perform(post("/api/comande")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", comandaId,
+                                "sessioneId", sessioneId,
+                                "gruppi", new Object[]{
+                                        Map.of("numeroPortata", 1, "righe", new Object[]{
+                                                Map.of("menuItemId", menuItemId, "quantita", 1)
+                                        }),
+                                        Map.of("numeroPortata", 2, "righe", new Object[]{
+                                                Map.of("menuItemId", menuItemId, "quantita", 1)
+                                        })
+                                }))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/kds/comande/" + comandaId).header("Authorization", "Bearer " + tokenCucina))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tavoloNumero").value("T9"))
+                .andExpect(jsonPath("$.cameriereUsername").value("cameriere.kds"))
+                .andExpect(jsonPath("$.gruppi.length()").value(2))
+                .andExpect(jsonPath("$.gruppi[0].numeroPortata").value(1))
+                .andExpect(jsonPath("$.gruppi[0].stato").value("IN_CODA"))
+                .andExpect(jsonPath("$.gruppi[0].righe[0].nome").value("Cotoletta alla milanese"))
+                .andExpect(jsonPath("$.gruppi[1].numeroPortata").value(2))
+                .andExpect(jsonPath("$.gruppi[1].stato").value("TRATTENUTO"));
+    }
+
+    @Test
+    void dettaglioComanda_inesistente_restituisce404() throws Exception {
+        String tokenCucina = login("cucina.kds");
+
+        mockMvc.perform(get("/api/kds/comande/" + UUID.randomUUID()).header("Authorization", "Bearer " + tokenCucina))
+                .andExpect(status().isNotFound());
+    }
 }

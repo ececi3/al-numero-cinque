@@ -43,6 +43,10 @@ autorizzazione per ruolo di ciascuna rotta).
   `seq_coda` (righe in `IN_CODA`, `IN_PREP`, `PRONTO`). Ogni gruppo include
   le righe d'ordine (`menuItemId`, `nome`, `quantita`, `note`): il cuoco deve
   vedere cosa preparare, non solo l'id comanda/portata.
+- `GET /api/kds/comande/{id}` — dettaglio completo di una comanda: tutte le
+  sue portate (gruppi) con stato e righe, più tavolo, cameriere e orario
+  d'invio. Serve a correlare le portate di una stessa comanda quando finiscono
+  in colonne diverse della coda (una per stato).
 - `POST /api/kds/gruppi/{id}/inizia-preparazione`
 - `POST /api/kds/gruppi/{id}/pronto` — chiama `CoursingService.segnaPronto`.
 - `POST /api/kds/gruppi/{id}/servito`

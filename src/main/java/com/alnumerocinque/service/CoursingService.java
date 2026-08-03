@@ -2,13 +2,17 @@ package com.alnumerocinque.service;
 
 import com.alnumerocinque.domain.Comanda;
 import com.alnumerocinque.domain.GruppoInvio;
+import com.alnumerocinque.domain.Utente;
 import com.alnumerocinque.repository.ComandaRepository;
 import com.alnumerocinque.repository.GruppoInvioRepository;
+import com.alnumerocinque.repository.UtenteRepository;
+import com.alnumerocinque.web.dto.ComandaDettaglioResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Motore di coursing: assegna l'ordine assoluto di arrivo delle comande
@@ -37,15 +41,18 @@ public class CoursingService {
 
     private final ComandaRepository comandaRepository;
     private final GruppoInvioRepository gruppoInvioRepository;
+    private final UtenteRepository utenteRepository;
     private final SequenzaGenerator sequenzaGenerator;
     private final OutboxEventWriter outboxEventWriter;
 
     public CoursingService(ComandaRepository comandaRepository,
                             GruppoInvioRepository gruppoInvioRepository,
+                            UtenteRepository utenteRepository,
                             SequenzaGenerator sequenzaGenerator,
                             OutboxEventWriter outboxEventWriter) {
         this.comandaRepository = comandaRepository;
         this.gruppoInvioRepository = gruppoInvioRepository;
+        this.utenteRepository = utenteRepository;
         this.sequenzaGenerator = sequenzaGenerator;
         this.outboxEventWriter = outboxEventWriter;
     }
@@ -104,6 +111,22 @@ public class CoursingService {
         gruppo.segnaServito();
         emettiEvento(gruppo, "GRUPPO_SERVITO");
         return gruppo;
+    }
+
+    /**
+     * Dettaglio completo di una comanda (tutte le portate con stato, tavolo,
+     * cameriere, orario): serve alla cucina per correlare le portate di una
+     * stessa comanda quando finiscono in colonne diverse della coda (una per
+     * stato), cosa che le card per-portata da sole non permettono di vedere.
+     */
+    @Transactional(readOnly = true)
+    public ComandaDettaglioResponse dettaglioComanda(UUID comandaId) {
+        Comanda comanda = comandaRepository.trovaConTavoloEGruppiById(comandaId)
+                .orElseThrow(() -> new IllegalArgumentException("Comanda non trovata: " + comandaId));
+        String cameriereUsername = utenteRepository.findById(comanda.getCameriereId())
+                .map(Utente::getUsername)
+                .orElse(null);
+        return ComandaDettaglioResponse.of(comanda, cameriereUsername);
     }
 
     private GruppoInvio trovaGruppo(Long gruppoInvioId) {

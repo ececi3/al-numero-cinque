@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: al-numero-cinque
+
+  profiles:
+    active: dev
+
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: al-numero-cinque-kds
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+app:
+  jwt:
+    # ATTENZIONE: valore di default SOLO per sviluppo. In produzione va
+    # sovrascritto con una variabile d'ambiente (APP_JWT_SECRET), una
+    # stringa lunga e casuale, diversa per ogni installazione on-premise.
+    secret: "dev-only-secret-non-usare-in-produzione-cambiare-assolutamente-1234567890"
+    validita-ore: 12
+  kafka:
+    # Topic unico per tutti gli eventi di dominio (outbox_event.event_type
+    # distingue il tipo). OutboxPublisher pubblica qui, KdsWebSocketBridge
+    # consuma da qui per alimentare il feed WebSocket del KDS.
+    topic-eventi: al-numero-cinque.eventi-dominio
+  outbox-publisher:
+    intervallo-ms: 2000
+    timeout-invio-ms: 5000
+  eventi-async:
+    # Governa sia OutboxPublisher (outbox -> Kafka) sia KdsWebSocketBridge
+    # (Kafka -> WebSocket KDS): disattivato nel profilo test, dove non c'e'
+    # un broker Kafka disponibile (vedi application-test.yml).
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/alnumerocinque
+    username: alnumerocinque
+    password: alnumerocinque
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: localhost:9092
+
+server:
+  port: 8080
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:alnumerocinque;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: localhost:9092

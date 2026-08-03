@@ -1,0 +1,43 @@
+version: "3.8"
+
+# Ambiente di sviluppo locale: Postgres + Redpanda (Kafka-compatible, single-node).
+# Redpanda al posto di Kafka "vero": stesso protocollo, footprint minimo per il
+# contesto on-premise single-node del ristorante.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: alnumerocinque-postgres
+    environment:
+      POSTGRES_DB: alnumerocinque
+      POSTGRES_USER: alnumerocinque
+      POSTGRES_PASSWORD: alnumerocinque
+    ports:
+      - "5432:5432"
+    volumes:
+      - alnumerocinque-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alnumerocinque"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.9
+    container_name: alnumerocinque-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://localhost:9092
+    ports:
+      - "9092:9092"
+    volumes:
+      - alnumerocinque-redpanda-data:/var/lib/redpanda/data
+
+volumes:
+  alnumerocinque-postgres-data:
+  alnumerocinque-redpanda-data:

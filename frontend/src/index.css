@@ -1,0 +1,353 @@
+:root {
+  --colore-sfondo: #f5f5f4;
+  --colore-superficie: #ffffff;
+  --colore-testo: #1c1917;
+  --colore-testo-debole: #78716c;
+  --colore-bordo: #e7e5e4;
+  --colore-primario: #0f766e;
+  --colore-primario-scuro: #115e59;
+  --colore-pericolo: #b91c1c;
+  --colore-avviso: #b45309;
+  --colore-ok: #15803d;
+  --raggio: 10px;
+  --ombra: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--colore-sfondo);
+  color: var(--colore-testo);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+a {
+  color: var(--colore-primario);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.barra-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: var(--colore-superficie);
+  border-bottom: 1px solid var(--colore-bordo);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.barra-nav .titolo {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--colore-primario-scuro);
+}
+
+.barra-nav nav {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.barra-nav nav a,
+.barra-nav nav a:visited {
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--raggio);
+  color: var(--colore-testo);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.barra-nav nav a.attivo {
+  background: var(--colore-primario);
+  color: white;
+}
+
+.barra-nav .utente-corrente {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--colore-testo-debole);
+}
+
+main.contenuto {
+  flex: 1;
+  padding: 1.25rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.pagina-centrata {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.card {
+  background: var(--colore-superficie);
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio);
+  box-shadow: var(--ombra);
+  padding: 1.25rem;
+}
+
+.card + .card {
+  margin-top: 1rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.griglia {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.pulsante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--raggio);
+  border: 1px solid transparent;
+  background: var(--colore-primario);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 2.5rem;
+}
+
+.pulsante:hover {
+  background: var(--colore-primario-scuro);
+}
+
+.pulsante:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pulsante.secondario {
+  background: var(--colore-superficie);
+  color: var(--colore-testo);
+  border-color: var(--colore-bordo);
+}
+
+.pulsante.secondario:hover {
+  background: var(--colore-sfondo);
+}
+
+.pulsante.pericolo {
+  background: var(--colore-pericolo);
+}
+
+.pulsante.piccolo {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  min-height: 2rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.campo label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--colore-testo-debole);
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio);
+  background: var(--colore-superficie);
+  color: var(--colore-testo);
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: 2px solid var(--colore-primario);
+  outline-offset: 1px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--colore-bordo);
+  font-size: 0.92rem;
+}
+
+th {
+  color: var(--colore-testo-debole);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge.libero,
+.badge.attivo,
+.badge.disponibile,
+.badge.aperta {
+  background: #dcfce7;
+  color: var(--colore-ok);
+}
+
+.badge.occupato,
+.badge.chiusa,
+.badge.non-disponibile,
+.badge.inattivo {
+  background: #fee2e2;
+  color: var(--colore-pericolo);
+}
+
+.badge.trattenuto {
+  background: #e7e5e4;
+  color: var(--colore-testo-debole);
+}
+
+.badge.in-coda {
+  background: #fef3c7;
+  color: var(--colore-avviso);
+}
+
+.badge.in-prep {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge.pronto {
+  background: #dcfce7;
+  color: var(--colore-ok);
+}
+
+.badge.servito {
+  background: #e7e5e4;
+  color: var(--colore-testo-debole);
+}
+
+.messaggio-errore {
+  background: #fee2e2;
+  color: var(--colore-pericolo);
+  border: 1px solid #fecaca;
+  border-radius: var(--raggio);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.messaggio-info {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #bae6fd;
+  border-radius: var(--raggio);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.striscia-offline {
+  background: var(--colore-avviso);
+  color: white;
+  text-align: center;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.elenco-azioni {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tavolo-scelta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.25rem 0.5rem;
+  border-radius: var(--raggio);
+  border: 2px solid var(--colore-bordo);
+  background: var(--colore-superficie);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.tavolo-scelta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tavolo-scelta:not(:disabled):hover {
+  border-color: var(--colore-primario);
+}
+
+.colonna-kds {
+  min-width: 260px;
+}
+
+.gruppo-kds {
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--colore-superficie);
+}

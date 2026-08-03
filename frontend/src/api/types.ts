@@ -108,6 +108,7 @@ export interface SincronizzaComandaRequest {
 }
 
 export interface RigaKdsResponse {
+  menuItemId: number
   nome: string
   quantita: number
   note?: string
@@ -129,6 +130,17 @@ export interface ComandaResponse {
   seqServer: number | null
   creataAt: string
   gruppi: GruppoInvioResponse[]
+}
+
+export interface SessioneDettaglioResponse {
+  id: string
+  tavoloId: number
+  cameriereId: number
+  numeroCoperti: number
+  stato: StatoSessione
+  apertaAt: string
+  tavoliAggregatiIds: number[]
+  comande: ComandaResponse[]
 }
 
 export interface TempoPreparazionePortata {

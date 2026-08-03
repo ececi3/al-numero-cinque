@@ -2,9 +2,9 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
-import type { ApriSessioneRequest, TavoloResponse } from '../../api/types'
+import type { ApriSessioneRequest, SessioneDettaglioResponse, TavoloResponse } from '../../api/types'
 import { accoda } from '../../offline/queue'
-import { salvaSessioneLocale } from '../../offline/sessioneLocale'
+import { idrataSessioneLocaleDaServer, salvaSessioneLocale } from '../../offline/sessioneLocale'
 import { leggiSessioneDiTavolo, registraSessioneDiTavolo } from '../../offline/indiceTavoli'
 
 export function CameriereTavoliPage() {
@@ -15,15 +15,30 @@ export function CameriereTavoliPage() {
   const [numeroCoperti, setNumeroCoperti] = useState('2')
   const [erroreApertura, setErroreApertura] = useState<string | null>(null)
   const [aperturaInCorso, setAperturaInCorso] = useState(false)
+  const [tavoloInRecupero, setTavoloInRecupero] = useState<number | null>(null)
 
-  function clickTavolo(tavolo: TavoloResponse) {
+  async function clickTavolo(tavolo: TavoloResponse) {
     setErroreApertura(null)
     if (tavolo.stato === 'OCCUPATO') {
       const sessioneId = leggiSessioneDiTavolo(tavolo.id)
       if (sessioneId) {
         navigate(`/cameriere/sessioni/${sessioneId}`)
-      } else {
-        setErroreApertura('Tavolo occupato: la sessione non è nota su questo dispositivo (apri sessione da chi lo ha occupato).')
+        return
+      }
+      // Sessione aperta da un altro dispositivo: non e' nell'indice locale
+      // (vedi offline/indiceTavoli.ts), va recuperata dal server.
+      setTavoloInRecupero(tavolo.id)
+      try {
+        const dettaglio = await api.get<SessioneDettaglioResponse>(`/api/sessioni/per-tavolo/${tavolo.id}`)
+        idrataSessioneLocaleDaServer(dettaglio)
+        registraSessioneDiTavolo(tavolo.id, dettaglio.id)
+        navigate(`/cameriere/sessioni/${dettaglio.id}`)
+      } catch (err) {
+        setErroreApertura(
+          err instanceof ApiError ? err.message : 'Errore di rete: il recupero della sessione richiede connessione',
+        )
+      } finally {
+        setTavoloInRecupero(null)
       }
       return
     }
@@ -79,10 +94,13 @@ export function CameriereTavoliPage() {
               key={tavolo.id}
               className="tavolo-scelta"
               onClick={() => clickTavolo(tavolo)}
+              disabled={tavoloInRecupero === tavolo.id}
               style={tavolo.stato === 'OCCUPATO' ? { borderColor: '#fecaca' } : undefined}
             >
               <span>{tavolo.numero}</span>
-              <span className={`badge ${tavolo.stato.toLowerCase()}`}>{tavolo.stato}</span>
+              <span className={`badge ${tavolo.stato.toLowerCase()}`}>
+                {tavoloInRecupero === tavolo.id ? 'apertura…' : tavolo.stato}
+              </span>
             </button>
           ))}
         </div>

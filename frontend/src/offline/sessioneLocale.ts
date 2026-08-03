@@ -5,7 +5,7 @@
 // GruppoInvioResponse non porta le righe: il dettaglio articoli/quantita'
 // visualizzato qui e' quello inserito dal cameriere, lo stato del gruppo
 // (se la comanda e' stata sincronizzata) viene invece dalla risposta server.
-import type { ApriSessioneRequest, GruppoInvioResponse } from '../api/types'
+import type { ApriSessioneRequest, GruppoInvioResponse, SessioneDettaglioResponse } from '../api/types'
 
 export interface RigaVista {
   menuItemId: number
@@ -80,4 +80,35 @@ export function aggiornaTavoliAggregati(sessioneId: string, tavoliAggregatiIds: 
   if (!esistente) return
   esistente.tavoliAggregatiIds = tavoliAggregatiIds
   scriviTutte(tutte)
+}
+
+/**
+ * Converte lo stato completo di una sessione ricevuto dal server (vedi
+ * GET /api/sessioni/{id} e GET /api/sessioni/per-tavolo/{tavoloId}) nel
+ * formato usato dalla cache locale, e lo salva: serve a un dispositivo che
+ * non ha aperto la sessione (quindi non ha nulla in localStorage) per poterla
+ * comunque visualizzare e continuare a operarci.
+ */
+export function idrataSessioneLocaleDaServer(dettaglio: SessioneDettaglioResponse): SessioneLocale {
+  const sessioneLocale: SessioneLocale = {
+    sessione: { id: dettaglio.id, tavoloId: dettaglio.tavoloId, numeroCoperti: dettaglio.numeroCoperti },
+    pendente: false,
+    tavoliAggregatiIds: dettaglio.tavoliAggregatiIds,
+    comande: dettaglio.comande.map((comanda) => ({
+      id: comanda.id,
+      pendente: false,
+      statiGruppi: comanda.gruppi,
+      gruppi: comanda.gruppi.map((gruppo) => ({
+        numeroPortata: gruppo.numeroPortata,
+        righe: gruppo.righe.map((riga) => ({
+          menuItemId: riga.menuItemId,
+          nome: riga.nome,
+          quantita: riga.quantita,
+          note: riga.note,
+        })),
+      })),
+    })),
+  }
+  salvaSessioneLocale(dettaglio.id, sessioneLocale)
+  return sessioneLocale
 }

@@ -11,6 +11,7 @@ import com.alnumerocinque.repository.SessioneRepository;
 import com.alnumerocinque.repository.TavoloAggregatoRepository;
 import com.alnumerocinque.repository.TavoloRepository;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
+import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -117,6 +118,26 @@ public class SessioneService {
         return tavoloAggregatoRepository.findBySessione(sessione).stream()
                 .map(aggregato -> aggregato.getTavolo().getId())
                 .toList();
+    }
+
+    /**
+     * Stato completo di una sessione, incluse le comande gia' sincronizzate:
+     * usato per recuperarla da un dispositivo diverso da quello che l'ha
+     * aperta (vedi SessioneDettaglioResponse).
+     */
+    @Transactional(readOnly = true)
+    public SessioneDettaglioResponse dettaglio(UUID sessioneId) {
+        Sessione sessione = sessioneRepository.findById(sessioneId)
+                .orElseThrow(() -> new IllegalArgumentException("Sessione non trovata: " + sessioneId));
+        return SessioneDettaglioResponse.of(sessione, tavoliAggregatiDi(sessione), comandaRepository.findBySessione(sessione));
+    }
+
+    /** Come {@link #dettaglio(UUID)}, ma partendo dal tavolo invece che dall'id sessione gia' noto. */
+    @Transactional(readOnly = true)
+    public SessioneDettaglioResponse dettaglioPerTavolo(Long tavoloId) {
+        Sessione sessione = sessioneRepository.findApertaPerTavolo(tavoloId)
+                .orElseThrow(() -> new IllegalArgumentException("Nessuna sessione aperta per il tavolo: " + tavoloId));
+        return dettaglio(sessione.getId());
     }
 
     private Sessione creaNuovaSessione(ApriSessioneRequest request, Long cameriereId) {

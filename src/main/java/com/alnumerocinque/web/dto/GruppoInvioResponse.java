@@ -25,9 +25,10 @@ public record GruppoInvioResponse(
         );
     }
 
-    public record RigaKdsResponse(String nome, int quantita, String note) {
+    public record RigaKdsResponse(Long menuItemId, String nome, int quantita, String note) {
         public static RigaKdsResponse of(RigaOrdine riga) {
-            return new RigaKdsResponse(riga.getMenuItem().getNome(), riga.getQuantita(), riga.getNote());
+            return new RigaKdsResponse(
+                    riga.getMenuItem().getId(), riga.getMenuItem().getNome(), riga.getQuantita(), riga.getNote());
         }
     }
 }

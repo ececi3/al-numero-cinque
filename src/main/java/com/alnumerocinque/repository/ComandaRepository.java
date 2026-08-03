@@ -19,6 +19,11 @@ public interface ComandaRepository extends JpaRepository<Comanda, UUID> {
     @EntityGraph(attributePaths = {"gruppi", "gruppi.righe"})
     Optional<Comanda> findById(UUID id);
 
+    // Solo "gruppi": un @EntityGraph che includa anche "gruppi.righe" causa
+    // MultipleBagFetchException in Hibernate (due collezioni-List annidate
+    // fetchate nella stessa query). "righe" e "righe.menuItem" restano quindi
+    // lazy: va bene per i chiamanti attuali, entrambi @Transactional
+    // (SessioneService.chiudiSessione, SessioneService.dettaglio).
     @EntityGraph(attributePaths = {"gruppi"})
     List<Comanda> findBySessione(Sessione sessione);
 }

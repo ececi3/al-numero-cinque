@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
-import type { GruppoRequest, MenuItemResponse, SincronizzaComandaRequest, TavoloResponse } from '../../api/types'
+import type {
+  GruppoRequest,
+  MenuItemResponse,
+  SessioneDettaglioResponse,
+  SincronizzaComandaRequest,
+  TavoloResponse,
+} from '../../api/types'
 import { accoda } from '../../offline/queue'
 import {
   aggiornaTavoliAggregati,
   aggiungiComandaLocale,
+  idrataSessioneLocaleDaServer,
   leggiSessioneLocale,
   type ComandaVista,
   type RigaVista,
 } from '../../offline/sessioneLocale'
-import { rimuoviSessioneDiTavolo } from '../../offline/indiceTavoli'
+import { registraSessioneDiTavolo, rimuoviSessioneDiTavolo } from '../../offline/indiceTavoli'
 
 interface RigaInPreparazione extends RigaVista {
   numeroPortata: number
@@ -38,8 +45,31 @@ export function CameriereSessionePage() {
   const navigate = useNavigate()
 
   const [sessioneLocale, setSessioneLocale] = useState(() => (sessioneId ? leggiSessioneLocale(sessioneId) : undefined))
+  const [recuperoInCorso, setRecuperoInCorso] = useState(false)
+  const [erroreRecupero, setErroreRecupero] = useState<string | null>(null)
   const { dati: menu } = useApiCall(() => api.get<MenuItemResponse[]>('/api/menu'))
   const { dati: tavoli } = useApiCall(() => api.get<TavoloResponse[]>('/api/tavoli'))
+
+  // Sessione assente in locale: puo' essere stata aperta da un altro
+  // dispositivo (vedi offline/indiceTavoli.ts, che indicizza solo sul
+  // dispositivo di apertura). Si tenta il recupero dal server prima di
+  // arrendersi: richiede connessione, coerente con le altre operazioni
+  // online-only (aggregazione tavoli, transizioni cucina).
+  useEffect(() => {
+    if (sessioneLocale || !sessioneId) return
+    setRecuperoInCorso(true)
+    setErroreRecupero(null)
+    api
+      .get<SessioneDettaglioResponse>(`/api/sessioni/${sessioneId}`)
+      .then((dettaglio) => {
+        setSessioneLocale(idrataSessioneLocaleDaServer(dettaglio))
+        registraSessioneDiTavolo(dettaglio.tavoloId, dettaglio.id)
+      })
+      .catch((e) =>
+        setErroreRecupero(e instanceof ApiError ? e.message : 'Errore di rete: il recupero della sessione richiede connessione'),
+      )
+      .finally(() => setRecuperoInCorso(false))
+  }, [sessioneId, sessioneLocale])
 
   const [righeInPreparazione, setRigheInPreparazione] = useState<RigaInPreparazione[]>([])
   const [menuItemId, setMenuItemId] = useState<number | ''>('')
@@ -61,10 +91,21 @@ export function CameriereSessionePage() {
     if (sessioneId) setSessioneLocale(leggiSessioneLocale(sessioneId))
   }
 
-  if (!sessioneId || !sessioneLocale) {
+  if (!sessioneId) {
     return (
       <div className="messaggio-errore">
-        Sessione non trovata su questo dispositivo. <Link to="/cameriere">Torna ai tavoli</Link>
+        Sessione non trovata. <Link to="/cameriere">Torna ai tavoli</Link>
+      </div>
+    )
+  }
+
+  if (!sessioneLocale) {
+    if (recuperoInCorso) {
+      return <p>Caricamento sessione…</p>
+    }
+    return (
+      <div className="messaggio-errore">
+        {erroreRecupero ?? 'Sessione non trovata su questo dispositivo.'} <Link to="/cameriere">Torna ai tavoli</Link>
       </div>
     )
   }

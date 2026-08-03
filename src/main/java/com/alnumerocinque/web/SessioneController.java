@@ -3,6 +3,7 @@ package com.alnumerocinque.web;
 import com.alnumerocinque.security.AuthenticatedUser;
 import com.alnumerocinque.service.SessioneService;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
+import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
 import com.alnumerocinque.web.dto.SessioneResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -39,5 +40,24 @@ public class SessioneController {
     public SessioneResponse aggregaTavolo(@PathVariable UUID id, @PathVariable Long tavoloId) {
         var sessione = sessioneService.aggregaTavolo(id, tavoloId);
         return SessioneResponse.of(sessione, sessioneService.tavoliAggregatiDi(sessione));
+    }
+
+    /**
+     * Recupera lo stato completo di una sessione gia' aperta (comande incluse).
+     * Serve a un dispositivo diverso da quello che ha aperto la sessione per
+     * poterla riprendere: l'indice tavolo -> sessione del cameriere e' per
+     * design solo nel localStorage del dispositivo di apertura (vedi
+     * frontend/src/offline/indiceTavoli.ts), quindi senza questo endpoint un
+     * secondo dispositivo non avrebbe modo di scoprire/visualizzare una
+     * sessione aperta altrove.
+     */
+    @GetMapping("/{id}")
+    public SessioneDettaglioResponse dettaglio(@PathVariable UUID id) {
+        return sessioneService.dettaglio(id);
+    }
+
+    @GetMapping("/per-tavolo/{tavoloId}")
+    public SessioneDettaglioResponse dettaglioPerTavolo(@PathVariable Long tavoloId) {
+        return sessioneService.dettaglioPerTavolo(tavoloId);
     }
 }

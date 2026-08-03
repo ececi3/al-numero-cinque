@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -295,6 +296,87 @@ class ComandaSyncControllerIntegrationTest {
                                         })
                                 }
                         ))))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Un dispositivo diverso da quello che ha aperto la sessione non ha
+     * l'indice tavolo -> sessione in localStorage (vedi
+     * frontend/src/offline/indiceTavoli.ts): deve poter recuperare la
+     * sessione dal server tramite GET /api/sessioni/per-tavolo/{tavoloId},
+     * comande gia' inviate incluse.
+     */
+    @Test
+    void dettaglioPerTavolo_recuperaSessioneApertaConLeComandeGiaInviate() throws Exception {
+        String token = ottieniToken("cameriere.test");
+        UUID sessioneId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/sessioni")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", sessioneId, "tavoloId", tavoloId, "numeroCoperti", 4))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/comande")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", UUID.randomUUID(),
+                                "sessioneId", sessioneId,
+                                "gruppi", new Object[]{
+                                        Map.of("numeroPortata", 1, "righe", new Object[]{
+                                                Map.of("menuItemId", menuItemId, "quantita", 2, "note", "senza aglio")
+                                        })
+                                }))))
+                .andExpect(status().isOk());
+
+        // Nuovo login: simula un secondo dispositivo, senza alcuno stato locale.
+        String tokenAltroDispositivo = ottieniToken("cameriere.test");
+
+        mockMvc.perform(get("/api/sessioni/per-tavolo/" + tavoloId)
+                        .header("Authorization", "Bearer " + tokenAltroDispositivo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(sessioneId.toString()))
+                .andExpect(jsonPath("$.tavoloId").value(tavoloId))
+                .andExpect(jsonPath("$.numeroCoperti").value(4))
+                .andExpect(jsonPath("$.comande[0].gruppi[0].righe[0].nome").value("Bruschette"))
+                .andExpect(jsonPath("$.comande[0].gruppi[0].righe[0].quantita").value(2));
+
+        mockMvc.perform(get("/api/sessioni/" + sessioneId)
+                        .header("Authorization", "Bearer " + tokenAltroDispositivo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comande[0].gruppi[0].righe[0].note").value("senza aglio"));
+    }
+
+    @Test
+    void dettaglioPerTavolo_risolveAncheUnTavoloAggregato() throws Exception {
+        String token = ottieniToken("cameriere.test");
+        UUID sessioneId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/sessioni")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", sessioneId, "tavoloId", tavoloId, "numeroCoperti", 2))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/sessioni/" + sessioneId + "/aggrega-tavolo/" + tavoloSecondarioId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/sessioni/per-tavolo/" + tavoloSecondarioId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(sessioneId.toString()));
+    }
+
+    @Test
+    void dettaglioPerTavolo_nessunaSessioneAperta_restituisce404() throws Exception {
+        String token = ottieniToken("cameriere.test");
+
+        mockMvc.perform(get("/api/sessioni/per-tavolo/" + tavoloId)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
 }

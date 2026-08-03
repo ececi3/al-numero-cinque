@@ -70,7 +70,7 @@ class AdminAnalyticsControllerIntegrationTest {
         cameriereId = cameriere.getId();
 
         tavolo = tavoloRepository.save(new Tavolo("A1"));
-        menuItem = menuItemRepository.save(new MenuItem("Risotto", "primo", new BigDecimal("10.00"), "primi", true));
+        menuItem = menuItemRepository.save(new MenuItem("Risotto", "primo", new BigDecimal("10.00"), null, true));
     }
 
     private String login(String username) throws Exception {

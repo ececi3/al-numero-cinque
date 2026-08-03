@@ -10,7 +10,7 @@ public record CreaMenuItemRequest(
         @NotBlank String nome,
         String descrizione,
         @NotNull @PositiveOrZero BigDecimal prezzo,
-        String categoria,
+        Long categoriaId,
         boolean inviaInCucina
 ) {
 }

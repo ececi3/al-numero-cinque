@@ -1,20 +1,27 @@
 import { type FormEvent, useState } from 'react'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
-import type { CreaMenuItemRequest, MenuItemResponse } from '../../api/types'
+import type { CategoriaResponse, CreaCategoriaRequest, CreaMenuItemRequest, MenuItemResponse } from '../../api/types'
 
 export function AdminMenuPage() {
   const { dati: voci, errore, inCorso, ricarica } = useApiCall(() =>
     api.get<MenuItemResponse[]>('/api/menu?tutti=true'),
   )
+  const { dati: categorie, ricarica: ricaricaCategorie } = useApiCall(() =>
+    api.get<CategoriaResponse[]>('/api/categorie'),
+  )
 
   const [nome, setNome] = useState('')
   const [descrizione, setDescrizione] = useState('')
   const [prezzo, setPrezzo] = useState('')
-  const [categoria, setCategoria] = useState('')
+  const [categoriaId, setCategoriaId] = useState<number | ''>('')
   const [inviaInCucina, setInviaInCucina] = useState(true)
   const [erroreForm, setErroreForm] = useState<string | null>(null)
   const [invioInCorso, setInvioInCorso] = useState(false)
+
+  const [nomeCategoria, setNomeCategoria] = useState('')
+  const [erroreCategoria, setErroreCategoria] = useState<string | null>(null)
+  const [invioCategoriaInCorso, setInvioCategoriaInCorso] = useState(false)
 
   async function creaVoce(e: FormEvent) {
     e.preventDefault()
@@ -25,14 +32,14 @@ export function AdminMenuPage() {
         nome,
         descrizione: descrizione || undefined,
         prezzo: Number(prezzo),
-        categoria: categoria || undefined,
+        categoriaId: categoriaId || undefined,
         inviaInCucina,
       }
       await api.post('/api/admin/menu', request)
       setNome('')
       setDescrizione('')
       setPrezzo('')
-      setCategoria('')
+      setCategoriaId('')
       setInviaInCucina(true)
       ricarica()
     } catch (err) {
@@ -53,10 +60,87 @@ export function AdminMenuPage() {
     }
   }
 
+  async function eliminaVoce(voce: MenuItemResponse) {
+    setErroreForm(null)
+    try {
+      await api.delete(`/api/admin/menu/${voce.id}`)
+      ricarica()
+    } catch (err) {
+      setErroreForm(
+        err instanceof ApiError
+          ? err.status === 409
+            ? `"${voce.nome}" e' gia' stata ordinata in passato e non puo' essere eliminata: usa "Disattiva".`
+            : err.message
+          : 'Errore di rete',
+      )
+    }
+  }
+
+  async function creaCategoria(e: FormEvent) {
+    e.preventDefault()
+    setErroreCategoria(null)
+    setInvioCategoriaInCorso(true)
+    try {
+      const request: CreaCategoriaRequest = { nome: nomeCategoria }
+      await api.post('/api/admin/categorie', request)
+      setNomeCategoria('')
+      ricaricaCategorie()
+    } catch (err) {
+      setErroreCategoria(err instanceof ApiError ? err.message : 'Errore di rete')
+    } finally {
+      setInvioCategoriaInCorso(false)
+    }
+  }
+
+  async function eliminaCategoria(cat: CategoriaResponse) {
+    setErroreCategoria(null)
+    try {
+      await api.delete(`/api/admin/categorie/${cat.id}`)
+      ricaricaCategorie()
+    } catch (err) {
+      setErroreCategoria(
+        err instanceof ApiError
+          ? err.status === 409
+            ? `"${cat.nome}" e' ancora usata da almeno una voce di menu: riassegna o elimina prima quelle voci.`
+            : err.message
+          : 'Errore di rete',
+      )
+    }
+  }
+
   return (
     <>
       <h1>Menu</h1>
       {erroreForm && <div className="messaggio-errore">{erroreForm}</div>}
+
+      <div className="card">
+        <h2>Categorie</h2>
+        {erroreCategoria && <div className="messaggio-errore">{erroreCategoria}</div>}
+        <form onSubmit={creaCategoria} className="elenco-azioni">
+          <input
+            aria-label="Nome categoria"
+            placeholder="Nome categoria"
+            value={nomeCategoria}
+            onChange={(e) => setNomeCategoria(e.target.value)}
+            required
+          />
+          <button className="pulsante secondario" disabled={invioCategoriaInCorso} type="submit">
+            {invioCategoriaInCorso ? 'Creazione…' : 'Aggiungi categoria'}
+          </button>
+        </form>
+        {categorie && categorie.length > 0 && (
+          <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem' }}>
+            {categorie.map((cat) => (
+              <li key={cat.id} style={{ marginBottom: '0.3rem' }}>
+                {cat.nome}{' '}
+                <button className="pulsante secondario piccolo" onClick={() => eliminaCategoria(cat)}>
+                  Elimina
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="card">
         <h2>Nuova voce</h2>
@@ -68,7 +152,18 @@ export function AdminMenuPage() {
             </div>
             <div className="campo">
               <label htmlFor="menu-categoria">Categoria</label>
-              <input id="menu-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} />
+              <select
+                id="menu-categoria"
+                value={categoriaId}
+                onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">Nessuna categoria…</option>
+                {categorie?.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="campo">
               <label htmlFor="menu-prezzo">Prezzo (€)</label>
@@ -135,6 +230,9 @@ export function AdminMenuPage() {
                   <td>
                     <button className="pulsante secondario piccolo" onClick={() => cambiaDisponibilita(voce)}>
                       {voce.disponibile ? 'Disattiva' : 'Attiva'}
+                    </button>{' '}
+                    <button className="pulsante secondario piccolo" onClick={() => eliminaVoce(voce)}>
+                      Elimina
                     </button>
                   </td>
                 </tr>

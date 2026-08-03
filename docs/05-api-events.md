@@ -63,6 +63,11 @@ autorizzazione per ruolo di ciascuna rotta).
 
 - `GET /api/admin/utenti`, `POST /api/admin/utenti`,
   `POST /api/admin/utenti/{id}/disattiva` — gestione utenti.
+- `DELETE /api/admin/utenti/{id}` — elimina definitivamente un utente. 409
+  se l'utente è ancora attivo (va prima disattivato) o se ha già aperto
+  sessioni/comande in passato (`cameriere_id` referenziato senza `ON
+  DELETE`): in quel caso resta solo disattivabile, coerente con lo storico
+  append-only.
 - `GET /api/admin/analytics` — coperti totali, numero sessioni/comande,
   tempi medi di preparazione per `numeroPortata`.
 - `POST /api/admin/tavoli` — crea un tavolo (409 se `numero` già in uso).

@@ -39,6 +39,22 @@ export function AdminUtentiPage() {
     }
   }
 
+  async function elimina(utente: UtenteResponse) {
+    setErroreForm(null)
+    try {
+      await api.delete(`/api/admin/utenti/${utente.id}`)
+      ricarica()
+    } catch (err) {
+      setErroreForm(
+        err instanceof ApiError
+          ? err.status === 409
+            ? `"${utente.username}" ha gia' aperto tavoli/comande in passato e non puo' essere eliminato: resta solo disattivabile.`
+            : err.message
+          : 'Errore di rete',
+      )
+    }
+  }
+
   return (
     <>
       <h1>Utenti</h1>
@@ -103,9 +119,13 @@ export function AdminUtentiPage() {
                     </span>
                   </td>
                   <td>
-                    {utente.attivo && (
+                    {utente.attivo ? (
                       <button className="pulsante secondario piccolo" onClick={() => disattiva(utente.id)}>
                         Disattiva
+                      </button>
+                    ) : (
+                      <button className="pulsante secondario piccolo" onClick={() => elimina(utente)}>
+                        Elimina
                       </button>
                     )}
                   </td>

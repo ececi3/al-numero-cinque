@@ -40,4 +40,10 @@ public class AdminUtenteController {
     public void disattiva(@PathVariable Long id) {
         utenteService.disattivaUtente(id);
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void elimina(@PathVariable Long id) {
+        utenteService.eliminaUtente(id);
+    }
 }

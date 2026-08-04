@@ -28,6 +28,14 @@ Spring `dev` punta a questo compose; profilo `test` usa H2 in-memory in
 modalità di compatibilità PostgreSQL, per non richiedere Docker per i test
 automatici.
 
+## Reverse proxy
+
+Non ancora presente davanti all'applicazione (Spring Boot è esposto
+direttamente). Un nginx davanti servirebbe a terminare TLS, servire i
+file statici del build frontend ed esporre un unico punto d'ingresso
+invece della porta 8080 nuda — vedi la valutazione in
+docs/09-roadmap.md § Prossimi passi (non ancora deciso/implementato).
+
 ## Backup
 
 Non ancora definito nel dettaglio (vedi roadmap): dato il deployment

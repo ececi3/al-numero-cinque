@@ -46,18 +46,53 @@
 - [x] **Endpoint di analytics per l'admin** (`GET /api/admin/analytics`:
       numero sessioni, coperti totali, numero comande, tempi medi di
       preparazione per numeroPortata)
+- [x] **Frontend React completo** (`frontend/`): pagine cameriere (tavoli,
+      sessione/presa comanda), KDS, admin (menu, categorie, utenti, tavoli,
+      analytics), autenticazione, coda di sync offline
+- [x] **Logout esplicito con blacklist token** (tabella `token_revocato`, V6)
+- [x] **Categorie di menu gestibili da admin** (V7): entità `Categoria`
+      invece di stringa libera su `MenuItem`, con creazione/eliminazione
+      (409 se ancora collegata a voci di menu); menu del cameriere
+      raggruppato per categoria
+- [x] **Eliminazione reale di voci di menu e utenti disattivati** (oltre
+      alla sola disattivazione preesistente), bloccata (409) se referenziate
+      da storico (righe d'ordine / sessioni-comande)
+- [x] **Coda cucina con i prodotti da preparare**: `GET /api/kds/coda`
+      include le righe d'ordine di ogni gruppo (prima esponeva solo
+      comanda/portata); dettaglio comanda completo (`GET
+      /api/kds/comande/{id}`) per correlare le portate di una stessa
+      comanda finite in colonne diverse
+- [x] **Recupero sessione da un altro dispositivo** (`GET
+      /api/sessioni/{id}`, `GET /api/sessioni/per-tavolo/{tavoloId}`):
+      l'indice tavolo → sessione del cameriere viveva solo nel localStorage
+      del dispositivo di apertura
+- [x] **Stato delle portate aggiornato lato cameriere** via polling (il
+      dispositivo cameriere non può ascoltare il feed WebSocket del KDS,
+      riservato al ruolo CUCINA)
+- [x] **Modifica di una comanda già inviata**: nota sempre modificabile,
+      voci aggiungibili/rimovibili solo se il gruppo non è ancora in
+      preparazione (`GruppoInvio.puoModificareVoci`)
 
 ## Prossimi passi
 
-1. **Refresh token / logout esplicito**: con JWT stateless non c'è uno stato
-   da invalidare lato server; se servirà una revoca prima della scadenza
-   (12h di default) andrà introdotta una blacklist (es. tabella o cache dei
-   token revocati, controllata da `JwtAuthenticationFilter`).
-2. **Deploy**: `docker-compose.dev.yml` copre solo Postgres + Redpanda per
+1. **Client dispositivi nativi** (app cameriere offline-capable, tablet
+   KDS): il frontend è oggi una web app React responsive, non un'app
+   nativa Android come originariamente previsto in
+   docs/01-design-decisions.md — da rivalutare se l'installazione reale
+   lo richiede.
+2. **Reverse proxy (nginx) davanti all'applicazione**: valutato ma non
+   ancora deciso/implementato. Servirebbe a terminare TLS (anche su LAN
+   del ristorante), servire i file statici del build frontend senza
+   passare dalla JVM, ed esporre un unico punto d'ingresso (80/443) invece
+   della porta 8080 nuda; richiede configurazione esplicita per il
+   proxying del WebSocket STOMP (`/ws-kds`, header `Upgrade`/`Connection`).
+   Trade-off principale: un componente in più da mantenere in
+   un'installazione on-premise a nodo singolo, a fronte di un modello di
+   minaccia già contenuto (rete chiusa del locale). Va di pari passo col
+   punto successivo.
+3. **Deploy**: `docker-compose.dev.yml` copre solo Postgres + Redpanda per
    sviluppo locale; manca ancora un profilo/immagine per l'installazione
    on-premise nel ristorante (vedi docs/08-deployment.md).
-3. **Client dispositivi** (app cameriere offline-capable, tablet KDS): non
-   ancora nel repo, solo il backend.
 
 ## Note d'ambiente (build locale)
 

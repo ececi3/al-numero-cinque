@@ -34,3 +34,29 @@ componente `SequenzaGenerator` per assegnare `seq_server` e `seq_coda` in
 modo monotono e concorrency-safe, senza lock applicativi. Funzionano
 identiche in PostgreSQL (prod) e in H2 in modalità di compatibilità
 PostgreSQL (test), tramite la sintassi `nextval('nome_sequenza')`.
+
+## V4__seed_admin_utente.sql
+
+Inserisce l'utente `admin` di bootstrap (password `cambiami-subito`,
+hash bcrypt), necessario per il primissimo accesso — vedi
+docs/07-auth.md.
+
+## V5__tavolo_aggregato.sql
+
+Tabella `tavolo_aggregato` per l'aggregazione di più tavoli a una
+sessione (online-only, non cambia il tavolo primario). Vedi
+docs/02-domain-model.md.
+
+## V6__token_revocato.sql
+
+Tabella `token_revocato` (blacklist di `jti` JWT) per il logout
+esplicito — vedi docs/07-auth.md.
+
+## V7__categoria.sql
+
+Sostituisce `menu_item.categoria` (stringa libera) con una vera tabella
+`categoria` (`nome` univoco), gestita da admin (create/elimina) invece
+che testo libero — vedi docs/02-domain-model.md. La migrazione converte
+i valori distinti già presenti in `menu_item.categoria` in righe della
+nuova tabella e ricollega `menu_item.categoria_id` di conseguenza, prima
+di rimuovere la vecchia colonna testuale.

@@ -26,8 +26,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Lettura tavoli/menu (qualunque ruolo autenticato) e gestione da admin
- * (creazione tavoli/voci menu, attiva/disattiva voce menu).
+ * Lettura tavoli/menu (qualunque ruolo autenticato) e gestione voci menu da
+ * admin (creazione, attiva/disattiva). La creazione tavoli non e' piu' una
+ * rotta admin (vedi SessioneNuovoTavoloControllerIntegrationTest).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -71,44 +72,25 @@ class TavoloMenuControllerIntegrationTest {
     }
 
     @Test
-    void creaTavolo_comeAdmin_eLoRendeVisibileTramiteElenco() throws Exception {
-        String tokenAdmin = login("admin.tavmenu");
+    void elencoTavoli_visibileAlCameriere_includeUnTavoloCreatoInSetup() throws Exception {
+        tavoloRepository.save(new Tavolo("T1"));
         String tokenCameriere = login("cameriere.tavmenu");
-
-        mockMvc.perform(post("/api/admin/tavoli")
-                        .header("Authorization", "Bearer " + tokenAdmin)
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(Map.of("numero", "T1"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.numero").value("T1"))
-                .andExpect(jsonPath("$.stato").value("LIBERO"));
 
         mockMvc.perform(get("/api/tavoli").header("Authorization", "Bearer " + tokenCameriere))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.numero == 'T1')]").exists());
     }
 
+    /** I tavoli non si creano piu' dall'admin: nascono solo aprendo una sessione (vedi SessioneNuovoTavoloControllerIntegrationTest). */
     @Test
-    void creaTavolo_conNumeroDuplicato_restituisce409() throws Exception {
-        tavoloRepository.save(new Tavolo("T2"));
+    void postAdminTavoli_rottaRimossa_restituisce404() throws Exception {
         String tokenAdmin = login("admin.tavmenu");
 
         mockMvc.perform(post("/api/admin/tavoli")
                         .header("Authorization", "Bearer " + tokenAdmin)
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(Map.of("numero", "T2"))))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void creaTavolo_comeCameriere_restituisce403() throws Exception {
-        String tokenCameriere = login("cameriere.tavmenu");
-
-        mockMvc.perform(post("/api/admin/tavoli")
-                        .header("Authorization", "Bearer " + tokenCameriere)
-                        .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of("numero", "T3"))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

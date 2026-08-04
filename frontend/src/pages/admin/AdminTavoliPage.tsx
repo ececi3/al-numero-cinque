@@ -1,51 +1,20 @@
-import { type FormEvent, useState } from 'react'
-import { api, ApiError } from '../../api/client'
+import { api } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
-import type { CreaTavoloRequest, TavoloResponse } from '../../api/types'
+import type { TavoloResponse } from '../../api/types'
 
+/** Sola lettura: i tavoli nascono solo aprendo una sessione dal dispositivo cameriere (vedi CameriereTavoliPage). */
 export function AdminTavoliPage() {
-  const { dati: tavoli, errore, inCorso, ricarica } = useApiCall(() => api.get<TavoloResponse[]>('/api/tavoli'))
-
-  const [numero, setNumero] = useState('')
-  const [erroreForm, setErroreForm] = useState<string | null>(null)
-  const [invioInCorso, setInvioInCorso] = useState(false)
-
-  async function creaTavolo(e: FormEvent) {
-    e.preventDefault()
-    setErroreForm(null)
-    setInvioInCorso(true)
-    try {
-      const request: CreaTavoloRequest = { numero }
-      await api.post('/api/admin/tavoli', request)
-      setNumero('')
-      ricarica()
-    } catch (err) {
-      setErroreForm(err instanceof ApiError ? err.message : 'Errore di rete')
-    } finally {
-      setInvioInCorso(false)
-    }
-  }
+  const { dati: tavoli, errore, inCorso } = useApiCall(() => api.get<TavoloResponse[]>('/api/tavoli'))
 
   return (
     <>
       <h1>Tavoli</h1>
 
       <div className="card">
-        <h2>Nuovo tavolo</h2>
-        {erroreForm && <div className="messaggio-errore">{erroreForm}</div>}
-        <form onSubmit={creaTavolo} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-          <div className="campo" style={{ marginBottom: 0 }}>
-            <label htmlFor="numero-tavolo">Numero/nome tavolo</label>
-            <input id="numero-tavolo" value={numero} onChange={(e) => setNumero(e.target.value)} required />
-          </div>
-          <button className="pulsante" disabled={invioInCorso} type="submit">
-            {invioInCorso ? 'Creazione…' : 'Crea'}
-          </button>
-        </form>
-      </div>
-
-      <div className="card">
         <h2>Elenco</h2>
+        <p style={{ color: 'var(--colore-testo-debole)', fontSize: '0.9rem' }}>
+          Un tavolo nasce quando un cameriere apre una sessione dando il suo numero: qui e' visibile in sola lettura.
+        </p>
         {inCorso && <p>Caricamento…</p>}
         {errore && <div className="messaggio-errore">{errore}</div>}
         {tavoli && (

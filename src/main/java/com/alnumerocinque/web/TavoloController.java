@@ -10,8 +10,11 @@ import java.util.List;
 
 /**
  * Lettura tavoli, per qualunque utente autenticato (il cameriere deve poter
- * scegliere il tavolo per aprire una sessione). La creazione e' riservata
- * all'admin (vedi AdminTavoloController).
+ * scegliere il tavolo per aprire una sessione, l'admin ne ha una vista di
+ * sola lettura). Un tavolo nasce solo come effetto collaterale
+ * dell'apertura di una sessione da parte del cameriere (vedi
+ * SessioneService.apriSessioneNuovoTavolo): non esiste piu' una rotta admin
+ * di creazione dedicata.
  */
 @RestController
 @RequestMapping("/api/tavoli")

@@ -79,6 +79,12 @@
       sessione, aggregate per voce di menu e prezzo congelato;
       consultabile lato cameriere in qualunque momento, utile prima di
       chiedere la chiusura del tavolo
+- [x] **Tavoli creati dal cameriere, non dall'admin** (`POST
+      /api/sessioni/nuovo-tavolo`): il cameriere apre una sessione dando
+      solo il numero del tavolo, creato al volo se non esiste ancora
+      (online-only, a differenza dell'apertura su un tavolo già noto);
+      rimossa la rotta di creazione admin (`POST /api/admin/tavoli`),
+      l'admin mantiene una vista di sola lettura (`GET /api/tavoli`)
 
 ## Prossimi passi
 

@@ -10,6 +10,7 @@ import com.alnumerocinque.repository.ComandaRepository;
 import com.alnumerocinque.repository.SessioneRepository;
 import com.alnumerocinque.repository.TavoloAggregatoRepository;
 import com.alnumerocinque.repository.TavoloRepository;
+import com.alnumerocinque.web.dto.ApriSessioneNuovoTavoloRequest;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
 import com.alnumerocinque.web.dto.ContoResponse;
 import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
@@ -54,7 +55,30 @@ public class SessioneService {
     @Transactional
     public Sessione apriSessione(ApriSessioneRequest request, Long cameriereId) {
         return sessioneRepository.findById(request.id())
-                .orElseGet(() -> creaNuovaSessione(request, cameriereId));
+                .orElseGet(() -> {
+                    Tavolo tavolo = tavoloRepository.findById(request.tavoloId())
+                            .orElseThrow(() -> new IllegalArgumentException("Tavolo non trovato: " + request.tavoloId()));
+                    return creaNuovaSessione(tavolo, request.id(), cameriereId, request.numeroCoperti());
+                });
+    }
+
+    /**
+     * Come {@link #apriSessione(ApriSessioneRequest, Long)}, ma identificando
+     * il tavolo per numero anziche' per id gia' noto: se il numero non
+     * corrisponde a nessun tavolo esistente ne viene creato uno nuovo al
+     * volo. A differenza dell'apertura sessione "classica", e' un'operazione
+     * online-only (vedi ApriSessioneNuovoTavoloRequest): un tavolo non puo'
+     * mai nascere offline (vedi Tavolo), quindi non e' accodabile lato
+     * cameriere se manca connettivita'.
+     */
+    @Transactional
+    public Sessione apriSessioneNuovoTavolo(ApriSessioneNuovoTavoloRequest request, Long cameriereId) {
+        return sessioneRepository.findById(request.id())
+                .orElseGet(() -> {
+                    Tavolo tavolo = tavoloRepository.findByNumero(request.numeroTavolo())
+                            .orElseGet(() -> tavoloRepository.save(new Tavolo(request.numeroTavolo())));
+                    return creaNuovaSessione(tavolo, request.id(), cameriereId, request.numeroCoperti());
+                });
     }
 
     /**
@@ -153,15 +177,9 @@ public class SessioneService {
         return ContoResponse.of(sessione, comandaRepository.findBySessione(sessione));
     }
 
-    private Sessione creaNuovaSessione(ApriSessioneRequest request, Long cameriereId) {
-        Tavolo tavolo = tavoloRepository.findById(request.tavoloId())
-                .orElseThrow(() -> new IllegalArgumentException("Tavolo non trovato: " + request.tavoloId()));
-
+    private Sessione creaNuovaSessione(Tavolo tavolo, UUID id, Long cameriereId, int numeroCoperti) {
         tavolo.occupa();
-
-        Sessione sessione = new Sessione(
-                request.id(), tavolo, cameriereId, request.numeroCoperti(), OffsetDateTime.now());
-
+        Sessione sessione = new Sessione(id, tavolo, cameriereId, numeroCoperti, OffsetDateTime.now());
         return sessioneRepository.save(sessione);
     }
 }

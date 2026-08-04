@@ -2,7 +2,13 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
-import type { ApriSessioneRequest, SessioneDettaglioResponse, TavoloResponse } from '../../api/types'
+import type {
+  ApriSessioneNuovoTavoloRequest,
+  ApriSessioneRequest,
+  SessioneDettaglioResponse,
+  SessioneResponse,
+  TavoloResponse,
+} from '../../api/types'
 import { accoda } from '../../offline/queue'
 import { idrataSessioneLocaleDaServer, salvaSessioneLocale } from '../../offline/sessioneLocale'
 import { leggiSessioneDiTavolo, registraSessioneDiTavolo } from '../../offline/indiceTavoli'
@@ -16,6 +22,15 @@ export function CameriereTavoliPage() {
   const [erroreApertura, setErroreApertura] = useState<string | null>(null)
   const [aperturaInCorso, setAperturaInCorso] = useState(false)
   const [tavoloInRecupero, setTavoloInRecupero] = useState<number | null>(null)
+
+  // Apertura di un tavolo nuovo (o riuso di uno libero per numero): a
+  // differenza dell'apertura su un tavolo gia' scelto dalla griglia sotto,
+  // e' un'operazione online-only (un tavolo non puo' nascere offline, vedi
+  // Tavolo), quindi niente coda di sync in caso di errore di rete.
+  const [numeroTavoloNuovo, setNumeroTavoloNuovo] = useState('')
+  const [copertiTavoloNuovo, setCopertiTavoloNuovo] = useState('2')
+  const [erroreTavoloNuovo, setErroreTavoloNuovo] = useState<string | null>(null)
+  const [aperturaTavoloNuovoInCorso, setAperturaTavoloNuovoInCorso] = useState(false)
 
   async function clickTavolo(tavolo: TavoloResponse) {
     setErroreApertura(null)
@@ -80,9 +95,82 @@ export function CameriereTavoliPage() {
     navigate(`/cameriere/sessioni/${sessioneId}`)
   }
 
+  /**
+   * Apre un tavolo dato solo il numero: lo crea al volo se non esiste
+   * ancora (o riusa quello libero con lo stesso numero). Online-only, niente
+   * fallback offline: un tavolo nuovo non puo' essere creato senza
+   * connessione (vedi Tavolo), quindi qui un errore di rete si mostra e
+   * basta, senza accodare nulla.
+   */
+  async function apriTavoloNuovo(e: FormEvent) {
+    e.preventDefault()
+    if (!numeroTavoloNuovo.trim()) return
+    setErroreTavoloNuovo(null)
+    setAperturaTavoloNuovoInCorso(true)
+
+    const sessioneId = crypto.randomUUID()
+    const request: ApriSessioneNuovoTavoloRequest = {
+      id: sessioneId,
+      numeroTavolo: numeroTavoloNuovo.trim(),
+      numeroCoperti: Number(copertiTavoloNuovo),
+    }
+
+    try {
+      const risposta = await api.post<SessioneResponse>('/api/sessioni/nuovo-tavolo', request)
+      salvaSessioneLocale(sessioneId, {
+        sessione: { id: sessioneId, tavoloId: risposta.tavoloId, numeroCoperti: risposta.numeroCoperti },
+        pendente: false,
+        tavoliAggregatiIds: [],
+        comande: [],
+      })
+      registraSessioneDiTavolo(risposta.tavoloId, sessioneId)
+      navigate(`/cameriere/sessioni/${sessioneId}`)
+    } catch (err) {
+      setErroreTavoloNuovo(
+        err instanceof ApiError ? err.message : 'Errore di rete: la creazione del tavolo richiede connessione',
+      )
+    } finally {
+      setAperturaTavoloNuovoInCorso(false)
+    }
+  }
+
   return (
     <>
       <h1>Tavoli</h1>
+
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h2>Nuovo tavolo</h2>
+        {erroreTavoloNuovo && <div className="messaggio-errore">{erroreTavoloNuovo}</div>}
+        <form onSubmit={apriTavoloNuovo}>
+          <div className="griglia">
+            <div className="campo">
+              <label htmlFor="numero-tavolo-nuovo">Numero tavolo</label>
+              <input
+                id="numero-tavolo-nuovo"
+                value={numeroTavoloNuovo}
+                onChange={(e) => setNumeroTavoloNuovo(e.target.value)}
+                required
+              />
+            </div>
+            <div className="campo">
+              <label htmlFor="coperti-tavolo-nuovo">Coperti</label>
+              <input
+                id="coperti-tavolo-nuovo"
+                type="number"
+                min={1}
+                value={copertiTavoloNuovo}
+                onChange={(e) => setCopertiTavoloNuovo(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <button type="submit" className="pulsante" disabled={aperturaTavoloNuovoInCorso || !numeroTavoloNuovo.trim()}>
+            {aperturaTavoloNuovoInCorso ? 'Apertura…' : 'Apri tavolo'}
+          </button>
+        </form>
+      </div>
+
+      <h2 style={{ marginTop: '1.5rem' }}>Tavoli esistenti</h2>
       {inCorso && <p>Caricamento…</p>}
       {errore && <div className="messaggio-errore">{errore}</div>}
       {!tavoloSelezionato && erroreApertura && <div className="messaggio-errore">{erroreApertura}</div>}

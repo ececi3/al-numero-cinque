@@ -42,10 +42,6 @@ export interface TavoloResponse {
   stato: StatoTavolo
 }
 
-export interface CreaTavoloRequest {
-  numero: string
-}
-
 export interface CategoriaResponse {
   id: number
   nome: string
@@ -77,6 +73,13 @@ export interface CreaMenuItemRequest {
 export interface ApriSessioneRequest {
   id: string
   tavoloId: number
+  numeroCoperti: number
+}
+
+/** Apre una sessione dando solo il numero del tavolo: se non esiste ancora viene creato al volo (online-only). */
+export interface ApriSessioneNuovoTavoloRequest {
+  id: string
+  numeroTavolo: string
   numeroCoperti: number
 }
 

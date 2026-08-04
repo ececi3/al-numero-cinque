@@ -2,10 +2,11 @@
 
 ## Principio
 
-Solo le operazioni **append-capable** (apertura sessione, registrazione
-comanda) possono essere eseguite offline sul dispositivo cameriere. Tutto
-ciò che richiede coordinamento con lo stato server (aggregazione tavoli,
-transizioni della coda cucina) richiede connettività.
+Solo le operazioni **append-capable** (apertura sessione *su un tavolo
+esistente*, registrazione comanda) possono essere eseguite offline sul
+dispositivo cameriere. Tutto ciò che richiede coordinamento con lo stato
+server (aggregazione tavoli, transizioni della coda cucina, creazione di un
+tavolo nuovo) richiede connettività.
 
 ## Generazione degli id
 
@@ -39,6 +40,13 @@ DB monotone, senza bisogno di logiche di riordino a posteriori.
 
 ## Cosa NON è offline-capable
 
+- **Apertura sessione su un tavolo nuovo** (`POST /api/sessioni/nuovo-tavolo`,
+  vedi docs/05-api-events.md): il tavolo nasce solo in quel momento
+  (`Tavolo` non ha id client-generated, vedi docs/02-domain-model.md), quindi
+  non può essere creato senza contattare il server. L'apertura su un tavolo
+  **già noto** al dispositivo (`POST /api/sessioni`, con `tavoloId` già in
+  cache dal precedente `GET /api/tavoli`) resta invece append-capable come
+  sopra.
 - Aggregazione di più tavoli in un'unica sessione.
 - Qualunque transizione di `GruppoInvio` (fire, pronto, servito): sono
   tutte operazioni lato cucina/server, il KDS è per design sempre online

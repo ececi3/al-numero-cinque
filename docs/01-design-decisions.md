@@ -8,10 +8,14 @@ sezione analytics per l'admin.
 ## Decisioni chiave
 
 - **Presa comande offline è un requisito hard.** Il cameriere deve poter
-  aprire una sessione e registrare una comanda anche senza connettività, e
-  sincronizzare quando torna online. L'**aggregazione tra tavoli** è invece
-  un'operazione **online-only**: richiede uno stato condiviso e coerente che
-  non ha senso costruire in modo distribuito/offline.
+  aprire una sessione *su un tavolo già esistente* e registrare una comanda
+  anche senza connettività, e sincronizzare quando torna online.
+  L'**aggregazione tra tavoli** è invece un'operazione **online-only**:
+  richiede uno stato condiviso e coerente che non ha senso costruire in modo
+  distribuito/offline. **Creare un tavolo nuovo** è online-only per lo
+  stesso motivo (`Tavolo` non ha id client-generated, vedi
+  docs/02-domain-model.md): è così che il cameriere apre un tavolo senza
+  passare dall'admin (`POST /api/sessioni/nuovo-tavolo`).
 - **Fire-on-ready è cucina-driven, non cameriere-driven.** Il cameriere non
   decide quando "sparare" la portata successiva: lo decide il completamento
   della portata precedente, segnalato dalla cucina (`segnaPronto`).
@@ -44,9 +48,11 @@ Questo principio risolve la tensione tra "deve funzionare offline" e "deve
 essere consistente online":
 
 - **Append-capable** (può nascere offline, id generato dal client, tipicamente
-  UUID): apertura sessione, registrazione comanda, righe d'ordine.
-- **Online-only** (richiede stato server coordinato): aggregazione tavoli,
-  transizioni della coda cucina (fire, pronto, servito), chiusura sessione.
+  UUID): apertura sessione *su un tavolo esistente*, registrazione comanda,
+  righe d'ordine.
+- **Online-only** (richiede stato server coordinato): creazione di un
+  tavolo nuovo, aggregazione tavoli, transizioni della coda cucina (fire,
+  pronto, servito), chiusura sessione.
 
 Le entità append-capable usano UUID generati lato client proprio per poter
 essere create senza round-trip col server; le entità online-only usano id

@@ -5,7 +5,9 @@ autorizzazione per ruolo di ciascuna rotta).
 
 ## Endpoint di lettura (qualunque ruolo autenticato)
 
-- `GET /api/tavoli` — elenco tavoli (per scegliere il tavolo in apertura sessione).
+- `GET /api/tavoli` — elenco tavoli (per scegliere il tavolo in apertura
+  sessione lato cameriere; usato anche dall'admin per una vista di sola
+  lettura, dato che non ha più una rotta di creazione dedicata).
 - `GET /api/menu` — elenco voci menu disponibili (`?tutti=true` per includere anche quelle disattivate).
   Ogni voce riporta anche `categoriaId`/`categoria` (nome), vedi `Categoria`
   in docs/02-domain-model.md.
@@ -14,8 +16,15 @@ autorizzazione per ruolo di ciascuna rotta).
 
 ## Endpoint (dispositivo cameriere, ruolo `CAMERIERE`)
 
-- `POST /api/sessioni` — apre una sessione. Body: `id` (UUID
-  client-generated), `tavoloId`, `numeroCoperti`. Idempotente sull'`id`.
+- `POST /api/sessioni` — apre una sessione su un tavolo già esistente. Body:
+  `id` (UUID client-generated), `tavoloId`, `numeroCoperti`. Idempotente
+  sull'`id`; append-capable, eseguibile offline (vedi docs/06-offline-sync.md).
+- `POST /api/sessioni/nuovo-tavolo` — apre una sessione dando il *numero* del
+  tavolo invece dell'id: se non corrisponde a nessun tavolo esistente ne
+  crea uno al volo (409 se il numero corrisponde a un tavolo già
+  `OCCUPATO`). È così che il cameriere crea un tavolo nuovo — non esiste più
+  una rotta admin dedicata. A differenza di `POST /api/sessioni`, è
+  **online-only** (un tavolo non può nascere offline).
 - `GET /api/sessioni/{id}` — stato completo di una sessione (comande, gruppi
   e righe incluse). Usato come fallback quando la sessione non è nella cache
   locale del dispositivo (vedi docs/06-offline-sync.md), e per il polling
@@ -90,7 +99,6 @@ autorizzazione per ruolo di ciascuna rotta).
   append-only.
 - `GET /api/admin/analytics` — coperti totali, numero sessioni/comande,
   tempi medi di preparazione per `numeroPortata`.
-- `POST /api/admin/tavoli` — crea un tavolo (409 se `numero` già in uso).
 - `POST /api/admin/menu`, `POST /api/admin/menu/{id}/attiva`,
   `POST /api/admin/menu/{id}/disattiva` — gestione voci menu.
 - `DELETE /api/admin/menu/{id}` — elimina una voce di menu. 409 se la voce

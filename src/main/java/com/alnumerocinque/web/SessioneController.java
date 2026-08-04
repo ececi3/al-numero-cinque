@@ -2,6 +2,7 @@ package com.alnumerocinque.web;
 
 import com.alnumerocinque.security.AuthenticatedUser;
 import com.alnumerocinque.service.SessioneService;
+import com.alnumerocinque.web.dto.ApriSessioneNuovoTavoloRequest;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
 import com.alnumerocinque.web.dto.ContoResponse;
 import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
@@ -28,6 +29,20 @@ public class SessioneController {
     public SessioneResponse apri(@Valid @RequestBody ApriSessioneRequest request,
                                   @AuthenticationPrincipal AuthenticatedUser utente) {
         return SessioneResponse.of(sessioneService.apriSessione(request, utente.id()));
+    }
+
+    /**
+     * Apre una sessione su un tavolo identificato per numero: se il tavolo
+     * non esiste ancora viene creato al volo (vedi
+     * SessioneService.apriSessioneNuovoTavolo). Il cameriere non deve piu'
+     * passare dall'admin per far nascere un tavolo nuovo; operazione
+     * online-only, a differenza di {@link #apri}.
+     */
+    @PostMapping("/nuovo-tavolo")
+    @ResponseStatus(HttpStatus.OK)
+    public SessioneResponse apriNuovoTavolo(@Valid @RequestBody ApriSessioneNuovoTavoloRequest request,
+                                             @AuthenticationPrincipal AuthenticatedUser utente) {
+        return SessioneResponse.of(sessioneService.apriSessioneNuovoTavolo(request, utente.id()));
     }
 
     @PostMapping("/{id}/chiudi")

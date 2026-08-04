@@ -63,6 +63,20 @@ public class CoursingService {
      * sparando il primo gruppo TRATTENUTO. Idempotente rispetto a re-invii
      * della stessa comanda dopo un ack perso in fase di sync: in tal caso
      * non viene ne' riassegnato seq_server ne' riemesso l'evento di fire.
+     *
+     * Il salvataggio (con flush) avviene PRIMA del fire, e il fire opera sul
+     * valore DI RITORNO del salvataggio, non sull'oggetto transiente
+     * originale: Comanda ha id assegnato dal client (UUID), non generato
+     * (vedi Comanda), quindi per Spring Data e' "gia' esistente" e save()
+     * passa da entityManager.merge() invece che persist() — merge restituisce
+     * una NUOVA istanza managed (con id IDENTITY assegnati a gruppi/righe
+     * dopo il flush), lasciando l'originale transiente e invariato. Sparare
+     * sull'oggetto sbagliato (quello pre-merge) catturerebbe
+     * gruppoInvioId: null nell'evento outbox del fire (letto da emettiEvento
+     * -> GruppoInvioEventPayload.of), che il feed WebSocket del KDS
+     * renderebbe come una card "fantasma" separata da quella reale invece di
+     * aggiornarla (il dedup lato frontend e' per id, vedi
+     * KdsPage.applicaEvento).
      */
     @Transactional
     public Comanda registraComanda(Comanda comanda) {
@@ -73,10 +87,11 @@ public class CoursingService {
 
         Comanda daRegistrare = esistente.orElse(comanda);
         daRegistrare.registraSuServer(sequenzaGenerator.prossimoSeqServer());
+        daRegistrare = comandaRepository.saveAndFlush(daRegistrare);
 
         fireProssimoTrattenuto(daRegistrare);
 
-        return comandaRepository.save(daRegistrare);
+        return daRegistrare;
     }
 
     /** La cucina inizia la preparazione di un gruppo gia' in coda. */

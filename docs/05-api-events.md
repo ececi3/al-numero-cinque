@@ -46,6 +46,12 @@ autorizzazione per ruolo di ciascuna rotta).
   esistente. Stesso vincolo di stato: 409 se il gruppo è già `IN_PREP` o
   oltre (una nota comunicata dopo che la cucina ha già iniziato a
   lavorare la portata non la raggiungerebbe in tempo utile).
+- `GET /api/sessioni/{id}/conto` — totale da pagare per la sessione: somma
+  di `prezzoCongelato * quantita` su tutte le `RigaOrdine` delle sue
+  comande (i tavoli aggregati condividono la stessa sessione, quindi sono
+  già inclusi). Le righe sono aggregate per voce di menu e prezzo
+  congelato. Consultabile in qualunque momento, non richiede che le
+  portate siano tutte `SERVITO` (a differenza della chiusura sessione).
 
 ## Endpoint (KDS — tablet cucina, ruolo `CUCINA`)
 

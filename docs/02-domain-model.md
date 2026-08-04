@@ -11,7 +11,7 @@
 | `Sessione` | UUID (client) | append-capable | `numeroCoperti` obbligatorio (richiesto per analytics), riferisce un `Tavolo` |
 | `Comanda` | UUID (client) | append-capable | `seqServer` assegnato **solo** alla registrazione (online) |
 | `GruppoInvio` | Long (auto) | online-only | rappresenta una "portata"; stato macchina a stati |
-| `RigaOrdine` | Long (auto) | append-only con eccezioni | `prezzoCongelato` sempre immutabile; nota sempre modificabile; riga intera aggiungibile/rimovibile solo se il `GruppoInvio` non è ancora in preparazione (vedi sotto) |
+| `RigaOrdine` | Long (auto) | append-only con eccezioni | `prezzoCongelato` sempre immutabile; nota e riga intera (aggiunta/rimozione) modificabili solo se il `GruppoInvio` non è ancora in preparazione (vedi sotto) |
 | `TavoloAggregato` | Long (auto) | online-only | associa un tavolo aggiuntivo a una sessione (aggregazione tavoli), non cambia il tavolo primario |
 
 ## Relazioni
@@ -66,6 +66,15 @@ comunicata dopo che la cucina ha già iniziato a lavorare la portata non la
 raggiungerebbe in tempo utile. Il prezzo di una voce aggiunta
 successivamente resta congelato al momento dell'aggiunta, mai retroattivo
 (stessa regola del sync iniziale, vedi `ComandaSyncService`).
+
+## Conto della sessione
+
+Non è un'entità persistita: `ContoResponse` (`SessioneService.conto`) è un
+read model calcolato al volo sommando `RigaOrdine.totaleRiga()`
+(`prezzoCongelato * quantita`) su tutte le righe delle comande della
+sessione, aggregate per voce di menu e prezzo congelato. Riflette sempre lo
+stato corrente delle `RigaOrdine` (comprese le eventuali aggiunte/rimozioni
+successive, vedi sopra), senza bisogno di invalidare una cache.
 
 Aggiungere/togliere righe non altera lo stato del gruppo, `seq_coda` né la
 logica di fire-on-ready (`CoursingService`): sono ortogonali alla state

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
 import type {
+  ContoResponse,
   GruppoInvioResponse,
   GruppoRequest,
   MenuItemResponse,
@@ -219,6 +220,13 @@ export function CameriereSessionePage() {
   const [erroreRecupero, setErroreRecupero] = useState<string | null>(null)
   const { dati: menu } = useApiCall(() => api.get<MenuItemResponse[]>('/api/menu'))
   const { dati: tavoli } = useApiCall(() => api.get<TavoloResponse[]>('/api/tavoli'))
+  // Ricaricato esplicitamente (non solo all'apertura pagina) dopo ogni invio
+  // comanda o modifica di una portata gia' inviata, cosi' il totale resta
+  // aggiornato senza dover aspettare il giro di polling di sincronizzaConServer.
+  const { dati: conto, ricarica: ricaricaConto } = useApiCall(
+    () => api.get<ContoResponse>(`/api/sessioni/${sessioneId}/conto`),
+    [sessioneId],
+  )
 
   // Sessione assente in locale: puo' essere stata aperta da un altro
   // dispositivo (vedi offline/indiceTavoli.ts, che indicizza solo sul
@@ -262,6 +270,7 @@ export function CameriereSessionePage() {
         setSessioneLocale(leggiSessioneLocale(sessioneId))
       })
       .catch(() => {})
+    ricaricaConto()
   }
 
   useEffect(() => {
@@ -371,6 +380,7 @@ export function CameriereSessionePage() {
 
     aggiungiComandaLocale(sessioneId, comandaVista)
     ricaricaSessioneLocale()
+    ricaricaConto()
     setRigheInPreparazione([])
     setInvioInCorso(false)
   }
@@ -555,6 +565,41 @@ export function CameriereSessionePage() {
             {aggregazioneInCorso ? 'Aggregazione…' : 'Aggrega'}
           </button>
         </div>
+      </div>
+
+      <div className="card">
+        <h2>Conto</h2>
+        {!conto ? (
+          <p>Caricamento conto…</p>
+        ) : conto.voci.length === 0 ? (
+          <p>Nessuna voce ancora ordinata.</p>
+        ) : (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Voce</th>
+                  <th>Qtà</th>
+                  <th>Prezzo unit.</th>
+                  <th>Totale</th>
+                </tr>
+              </thead>
+              <tbody>
+                {conto.voci.map((voce) => (
+                  <tr key={voce.menuItemId + '-' + voce.prezzoUnitario}>
+                    <td>{voce.nome}</td>
+                    <td>{voce.quantita}</td>
+                    <td>€ {voce.prezzoUnitario.toFixed(2)}</td>
+                    <td>€ {voce.totaleVoce.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ marginTop: '0.6rem', fontSize: '1.1rem' }}>
+              <strong>Totale: € {conto.totale.toFixed(2)}</strong>
+            </p>
+          </>
+        )}
       </div>
 
       <div className="card">

@@ -102,6 +102,7 @@ autorizzazione per ruolo di ciascuna rotta).
 | `GRUPPO_INVIO` | `GRUPPO_IN_PREP` | a inizio preparazione |
 | `GRUPPO_INVIO` | `GRUPPO_PRONTO` | a `segnaPronto` |
 | `GRUPPO_INVIO` | `GRUPPO_SERVITO` | a `segnaServito`, o subito al fire se il gruppo non richiede cucina (vedi docs/02-domain-model.md) |
+| `GRUPPO_INVIO` | `GRUPPO_RIGHE_AGGIORNATE` | ad ogni modifica di una comanda già inviata (`ComandaModificaService`: aggiunta/rimozione voce, aggiornamento nota) — senza, il KDS vedrebbe la modifica solo al prossimo refresh manuale, non sul feed WebSocket |
 | `SESSIONE` | `SESSIONE_CHIUSA` | a chiusura sessione |
 
 La scrittura in `outbox_event` avviene nella stessa transazione della

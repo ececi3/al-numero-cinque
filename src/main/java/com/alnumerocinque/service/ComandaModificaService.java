@@ -17,20 +17,34 @@ import org.springframework.transaction.annotation.Transactional;
  * gia' iniziato a lavorare la portata non la raggiungerebbe in tempo utile.
  * Distinta da ComandaSyncService, che riguarda solo l'assemblaggio iniziale
  * della comanda al sync.
+ *
+ * Ogni mutazione emette un evento outbox (stesso aggregate_type "GRUPPO_INVIO"
+ * usato da CoursingService per fire/pronto/servito): senza, il tablet cucina
+ * vedrebbe una nota o una voce aggiunta solo al prossimo refresh manuale di
+ * /api/kds/coda, non in tempo reale sul feed WebSocket a cui e' gia'
+ * abbonato. KdsPage.applicaEvento sa gia' applicare un evento.righe
+ * aggiornato a parita' di stato, quindi non serve alcuna modifica lato
+ * frontend per il rendering.
  */
 @Service
 public class ComandaModificaService {
 
+    private static final String AGGREGATE_TYPE_GRUPPO_INVIO = "GRUPPO_INVIO";
+    private static final String EVENTO_RIGHE_AGGIORNATE = "GRUPPO_RIGHE_AGGIORNATE";
+
     private final GruppoInvioRepository gruppoInvioRepository;
     private final RigaOrdineRepository rigaOrdineRepository;
     private final MenuItemRepository menuItemRepository;
+    private final OutboxEventWriter outboxEventWriter;
 
     public ComandaModificaService(GruppoInvioRepository gruppoInvioRepository,
                                    RigaOrdineRepository rigaOrdineRepository,
-                                   MenuItemRepository menuItemRepository) {
+                                   MenuItemRepository menuItemRepository,
+                                   OutboxEventWriter outboxEventWriter) {
         this.gruppoInvioRepository = gruppoInvioRepository;
         this.rigaOrdineRepository = rigaOrdineRepository;
         this.menuItemRepository = menuItemRepository;
+        this.outboxEventWriter = outboxEventWriter;
     }
 
     @Transactional
@@ -46,6 +60,7 @@ public class ComandaModificaService {
         // senza flush il suo id (IDENTITY, assegnato dal DB) resta nullo nel
         // valore ancora in memoria restituito al chiamante.
         gruppoInvioRepository.flush();
+        emettiEvento(gruppo);
         return gruppo;
     }
 
@@ -57,6 +72,7 @@ public class ComandaModificaService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Riga non trovata nel gruppo " + gruppoId + ": " + rigaId));
         gruppo.rimuoviRiga(riga);
+        emettiEvento(gruppo);
         return gruppo;
     }
 
@@ -65,6 +81,15 @@ public class ComandaModificaService {
         RigaOrdine riga = rigaOrdineRepository.findById(rigaId)
                 .orElseThrow(() -> new IllegalArgumentException("Riga non trovata: " + rigaId));
         riga.aggiornaNote(note);
+        emettiEvento(riga.getGruppoInvio());
+    }
+
+    private void emettiEvento(GruppoInvio gruppo) {
+        outboxEventWriter.registraEvento(
+                AGGREGATE_TYPE_GRUPPO_INVIO,
+                String.valueOf(gruppo.getId()),
+                EVENTO_RIGHE_AGGIORNATE,
+                GruppoInvioEventPayload.of(gruppo));
     }
 
     private GruppoInvio trovaGruppo(Long gruppoId) {

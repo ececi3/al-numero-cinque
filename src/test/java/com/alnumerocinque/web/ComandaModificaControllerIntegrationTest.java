@@ -1,10 +1,12 @@
 package com.alnumerocinque.web;
 
 import com.alnumerocinque.domain.MenuItem;
+import com.alnumerocinque.domain.OutboxEvent;
 import com.alnumerocinque.domain.RuoloUtente;
 import com.alnumerocinque.domain.Tavolo;
 import com.alnumerocinque.domain.Utente;
 import com.alnumerocinque.repository.MenuItemRepository;
+import com.alnumerocinque.repository.OutboxEventRepository;
 import com.alnumerocinque.repository.TavoloRepository;
 import com.alnumerocinque.repository.UtenteRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,16 +21,20 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Modifica di una comanda gia' inviata: aggiunta/rimozione di una voce
- * (solo se il gruppo non e' ancora in preparazione) e aggiornamento nota
- * (sempre permesso). Vedi ComandaModificaService per i vincoli di stato.
+ * Modifica di una comanda gia' inviata: aggiunta/rimozione di una voce e
+ * aggiornamento nota, entrambe permesse solo se il gruppo non e' ancora in
+ * preparazione. Vedi ComandaModificaService per i vincoli di stato e per
+ * l'emissione degli eventi outbox che tengono il KDS aggiornato in tempo
+ * reale su queste modifiche.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -55,6 +61,9 @@ class ComandaModificaControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
 
     private Long tavoloId;
     private Long menuItemId;
@@ -261,5 +270,40 @@ class ComandaModificaControllerIntegrationTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of("note", "troppo tardi"))))
                 .andExpect(status().isConflict());
+    }
+
+    /**
+     * Senza un evento outbox il tablet cucina vedrebbe una voce aggiunta o
+     * una nota cambiata solo al prossimo refresh manuale, non sul feed
+     * WebSocket a cui e' gia' abbonato (vedi ComandaModificaService).
+     */
+    @Test
+    void ogniModificaComanda_scriveUnEventoOutboxPerIlKds() throws Exception {
+        String tokenCameriere = login("cameriere.modifica");
+        long gruppoInCodaId = apriSessioneEInviaComandaConDuePortate(tokenCameriere)[0];
+
+        String rispostaAggiunta = mockMvc.perform(post("/api/comande/gruppi/" + gruppoInCodaId + "/righe")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "menuItemId", secondoMenuItemId, "quantita", 1))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long rigaId = objectMapper.readTree(rispostaAggiunta).get("righe").get(1).get("id").asLong();
+
+        mockMvc.perform(patch("/api/comande/righe/" + rigaId + "/note")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("note", "ben cotto"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/comande/gruppi/" + gruppoInCodaId + "/righe/" + rigaId)
+                        .header("Authorization", "Bearer " + tokenCameriere))
+                .andExpect(status().isOk());
+
+        List<OutboxEvent> eventi = outboxEventRepository.findByPublishedAtIsNullOrderByIdAsc();
+        assertThat(eventi)
+                .filteredOn(e -> e.getEventType().equals("GRUPPO_RIGHE_AGGIORNATE"))
+                .hasSize(3);
     }
 }

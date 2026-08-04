@@ -71,7 +71,9 @@
       riservato al ruolo CUCINA)
 - [x] **Modifica di una comanda già inviata**: nota e voci
       aggiungibili/rimovibili/modificabili solo se il gruppo non è
-      ancora in preparazione (`GruppoInvio.puoModificare`)
+      ancora in preparazione (`GruppoInvio.puoModificare`), con evento
+      outbox (`GRUPPO_RIGHE_AGGIORNATE`) ad ogni modifica cosi' il KDS si
+      aggiorna in tempo reale, non solo al prossimo refresh manuale
 
 ## Prossimi passi
 

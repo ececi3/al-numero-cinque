@@ -38,13 +38,14 @@ autorizzazione per ruolo di ciascuna rotta).
   `CoursingService.registraComanda`.
 - `POST /api/comande/gruppi/{gruppoId}/righe` — aggiunge una voce a un
   gruppo già inviato. Body: `menuItemId`, `quantita`, `note`. 409 se il
-  gruppo è già `IN_PREP` o oltre (`GruppoInvio.puoModificareVoci`); il
-  prezzo è congelato al momento dell'aggiunta, non retroattivo.
+  gruppo è già `IN_PREP` o oltre (`GruppoInvio.puoModificare`); il prezzo
+  è congelato al momento dell'aggiunta, non retroattivo.
 - `DELETE /api/comande/gruppi/{gruppoId}/righe/{rigaId}` — rimuove una voce
   da un gruppo già inviato. Stesso vincolo di stato dell'aggiunta.
 - `PATCH /api/comande/righe/{rigaId}/note` — aggiorna la nota di una riga
-  esistente. Sempre permesso, qualunque stato del gruppo (comunicare una
-  nota alla cucina non deve aspettare che la portata sia ancora in coda).
+  esistente. Stesso vincolo di stato: 409 se il gruppo è già `IN_PREP` o
+  oltre (una nota comunicata dopo che la cucina ha già iniziato a
+  lavorare la portata non la raggiungerebbe in tempo utile).
 
 ## Endpoint (KDS — tablet cucina, ruolo `CUCINA`)
 

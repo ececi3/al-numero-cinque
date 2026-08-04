@@ -40,11 +40,11 @@ function raggruppaPerCategoria(menu: MenuItemResponse[]): [string, MenuItemRespo
 }
 
 /**
- * Una portata gia' sincronizzata, con i controlli di modifica: la nota di
- * ogni riga si puo' sempre aggiungere/cambiare, aggiungere o togliere
- * un'intera voce solo se la portata non e' ancora in preparazione (stesso
- * vincolo imposto server-side da GruppoInvio.puoModificareVoci — i pulsanti
- * spariscono qui solo per chiarezza, la fonte di verita' resta il backend).
+ * Una portata gia' sincronizzata, con i controlli di modifica: nota e voci
+ * sono modificabili solo finche' la portata non e' ancora in preparazione
+ * (stesso vincolo imposto server-side da GruppoInvio.puoModificare — i
+ * controlli spariscono qui solo per chiarezza, la fonte di verita' resta
+ * il backend).
  */
 function PortataModificabile({
   gruppo,
@@ -55,7 +55,7 @@ function PortataModificabile({
   menuPerCategoria: [string, MenuItemResponse[]][]
   onCambiato: () => void
 }) {
-  const modificabileVoci = gruppo.stato === 'TRATTENUTO' || gruppo.stato === 'IN_CODA'
+  const modificabile = gruppo.stato === 'TRATTENUTO' || gruppo.stato === 'IN_CODA'
 
   const [noteBozza, setNoteBozza] = useState<Record<number, string>>({})
   const [salvandoNotaId, setSalvandoNotaId] = useState<number | null>(null)
@@ -141,35 +141,41 @@ function PortataModificabile({
               <td>{riga.nome}</td>
               <td>{riga.quantita}</td>
               <td>
-                <input
-                  value={notaCorrente(riga)}
-                  onChange={(e) => setNoteBozza((bozza) => ({ ...bozza, [riga.id]: e.target.value }))}
-                  style={{ width: '9rem' }}
-                />
+                {modificabile ? (
+                  <input
+                    value={notaCorrente(riga)}
+                    onChange={(e) => setNoteBozza((bozza) => ({ ...bozza, [riga.id]: e.target.value }))}
+                    style={{ width: '9rem' }}
+                  />
+                ) : (
+                  riga.note ?? '—'
+                )}
               </td>
               <td style={{ whiteSpace: 'nowrap' }}>
-                <button
-                  className="pulsante secondario piccolo"
-                  disabled={salvandoNotaId === riga.id || notaCorrente(riga) === (riga.note ?? '')}
-                  onClick={() => salvaNota(riga)}
-                >
-                  Salva nota
-                </button>{' '}
-                {modificabileVoci && (
-                  <button
-                    className="pulsante secondario piccolo"
-                    disabled={rimuovendoRigaId === riga.id}
-                    onClick={() => rimuoviVoce(riga)}
-                  >
-                    Rimuovi
-                  </button>
+                {modificabile && (
+                  <>
+                    <button
+                      className="pulsante secondario piccolo"
+                      disabled={salvandoNotaId === riga.id || notaCorrente(riga) === (riga.note ?? '')}
+                      onClick={() => salvaNota(riga)}
+                    >
+                      Salva nota
+                    </button>{' '}
+                    <button
+                      className="pulsante secondario piccolo"
+                      disabled={rimuovendoRigaId === riga.id}
+                      onClick={() => rimuoviVoce(riga)}
+                    >
+                      Rimuovi
+                    </button>
+                  </>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {modificabileVoci && (
+      {modificabile && (
         <div className="elenco-azioni" style={{ marginTop: '0.5rem' }}>
           <select value={nuovaVoceId} onChange={(e) => setNuovaVoceId(e.target.value ? Number(e.target.value) : '')}>
             <option value="">Aggiungi voce…</option>

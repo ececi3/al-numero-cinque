@@ -212,7 +212,40 @@ class ComandaModificaControllerIntegrationTest {
     }
 
     @Test
-    void aggiornaNote_dopoServitoDaCucina_restaConsentito() throws Exception {
+    void aggiornaNote_suGruppoInCoda_percorsoFelice() throws Exception {
+        String tokenCameriere = login("cameriere.modifica");
+        UUID sessioneId = UUID.randomUUID();
+        mockMvc.perform(post("/api/sessioni")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", sessioneId, "tavoloId", tavoloId, "numeroCoperti", 2))))
+                .andExpect(status().isOk());
+
+        String rispostaComanda = mockMvc.perform(post("/api/comande")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", UUID.randomUUID(),
+                                "sessioneId", sessioneId,
+                                "gruppi", new Object[]{
+                                        Map.of("numeroPortata", 1, "righe", new Object[]{
+                                                Map.of("menuItemId", menuItemId, "quantita", 1)
+                                        })
+                                }))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long rigaId = objectMapper.readTree(rispostaComanda).get("gruppi").get(0).get("righe").get(0).get("id").asLong();
+
+        mockMvc.perform(patch("/api/comande/righe/" + rigaId + "/note")
+                        .header("Authorization", "Bearer " + tokenCameriere)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("note", "senza aglio"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void aggiornaNote_suGruppoInPreparazione_restituisce409() throws Exception {
         String tokenCameriere = login("cameriere.modifica");
         String tokenCucina = login("cucina.modifica");
         long gruppoId = apriSessioneEInviaComandaConDuePortate(tokenCameriere)[0];
@@ -223,17 +256,10 @@ class ComandaModificaControllerIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         long rigaId = objectMapper.readTree(rispostaComanda).get("righe").get(0).get("id").asLong();
 
-        mockMvc.perform(post("/api/kds/gruppi/" + gruppoId + "/pronto")
-                        .header("Authorization", "Bearer " + tokenCucina))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/api/kds/gruppi/" + gruppoId + "/servito")
-                        .header("Authorization", "Bearer " + tokenCucina))
-                .andExpect(status().isOk());
-
         mockMvc.perform(patch("/api/comande/righe/" + rigaId + "/note")
                         .header("Authorization", "Bearer " + tokenCameriere)
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(Map.of("note", "aggiunta dopo il servito"))))
-                .andExpect(status().isOk());
+                        .content(objectMapper.writeValueAsString(Map.of("note", "troppo tardi"))))
+                .andExpect(status().isConflict());
     }
 }

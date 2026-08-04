@@ -28,10 +28,10 @@ public record GruppoInvioEventPayload(
         );
     }
 
-    public record RigaEventPayload(Long menuItemId, String nome, int quantita, String note) {
+    public record RigaEventPayload(Long id, Long menuItemId, String nome, int quantita, String note) {
         public static RigaEventPayload of(RigaOrdine riga) {
             return new RigaEventPayload(
-                    riga.getMenuItem().getId(), riga.getMenuItem().getNome(), riga.getQuantita(), riga.getNote());
+                    riga.getId(), riga.getMenuItem().getId(), riga.getMenuItem().getNome(), riga.getQuantita(), riga.getNote());
         }
     }
 }

@@ -11,7 +11,7 @@
 | `Sessione` | UUID (client) | append-capable | `numeroCoperti` obbligatorio (richiesto per analytics), riferisce un `Tavolo` |
 | `Comanda` | UUID (client) | append-capable | `seqServer` assegnato **solo** alla registrazione (online) |
 | `GruppoInvio` | Long (auto) | online-only | rappresenta una "portata"; stato macchina a stati |
-| `RigaOrdine` | Long (auto) | append-only | `prezzoCongelato` immutabile dopo la creazione |
+| `RigaOrdine` | Long (auto) | append-only con eccezioni | `prezzoCongelato` sempre immutabile; nota sempre modificabile; riga intera aggiungibile/rimovibile solo se il `GruppoInvio` non è ancora in preparazione (vedi sotto) |
 | `TavoloAggregato` | Long (auto) | online-only | associa un tavolo aggiuntivo a una sessione (aggregazione tavoli), non cambia il tavolo primario |
 
 ## Relazioni
@@ -52,6 +52,26 @@ gruppo salta interamente la coda (nessun `seq_coda` assegnato) ed è marcato
 servito subito. `CoursingService.fireProssimoTrattenuto` gestisce questo
 caso cascando immediatamente sul gruppo successivo, cosi' che una portata
 "senza cucina" non blocchi l'avanzamento di quelle dopo.
+
+## Modifica di una comanda già inviata
+
+`RigaOrdine` è append-only *di default*, ma con due eccezioni deliberate,
+entrambe incapsulate in `GruppoInvio`/`RigaOrdine` (non solo a livello di
+controller, così qualunque chiamante rispetta gli stessi vincoli):
+
+- **Nota**: sempre modificabile (`RigaOrdine.aggiornaNote`), qualunque stato
+  del gruppo — comunicare un'informazione alla cucina non deve aspettare che
+  la portata sia ancora in coda.
+- **Aggiunta/rimozione di un'intera voce**: permessa solo se
+  `GruppoInvio.puoModificareVoci()` è vero, cioè stato `TRATTENUTO` o
+  `IN_CODA` — il gruppo non è ancora stato visto dalla cucina. Da `IN_PREP`
+  in poi lancia `IllegalStateException` (409). Il prezzo di una voce
+  aggiunta successivamente resta congelato al momento dell'aggiunta, mai
+  retroattivo (stessa regola del sync iniziale, vedi `ComandaSyncService`).
+
+Aggiungere/togliere righe non altera lo stato del gruppo, `seq_coda` né la
+logica di fire-on-ready (`CoursingService`): sono ortogonali alla state
+machine del gruppo, riguardano solo il contenuto delle sue righe.
 
 ## Convenzioni di naming
 

@@ -10,8 +10,12 @@ import java.time.OffsetDateTime;
 /**
  * Riga d'ordine. Il prezzo viene congelato al momento della presa comanda
  * (prezzoCongelato) e non e' mai ricalcolato, anche se il prezzo del
- * MenuItem cambia successivamente. Nessuna modifica/cancellazione in v1:
- * le righe sono append-only una volta create.
+ * MenuItem cambia successivamente — questo resta vero anche per le righe
+ * aggiunte dopo l'invio iniziale (vedi GruppoInvio.aggiungiRiga). La nota
+ * e' l'unico campo modificabile dopo la creazione, e senza vincoli di stato
+ * del gruppo (vedi RigaOrdine.aggiornaNote): aggiunta/rimozione di righe
+ * intere e' invece permessa solo mentre il gruppo non e' ancora in
+ * preparazione (GruppoInvio.puoModificareVoci).
  */
 @Entity
 @Table(name = "riga_ordine")
@@ -57,5 +61,10 @@ public class RigaOrdine {
 
     public BigDecimal totaleRiga() {
         return prezzoCongelato.multiply(BigDecimal.valueOf(quantita));
+    }
+
+    /** Sempre permesso, qualunque stato del gruppo: comunicare una nota alla cucina non deve aspettare che la portata sia ancora in coda. */
+    public void aggiornaNote(String note) {
+        this.note = note;
     }
 }

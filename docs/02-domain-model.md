@@ -55,19 +55,17 @@ caso cascando immediatamente sul gruppo successivo, cosi' che una portata
 
 ## Modifica di una comanda già inviata
 
-`RigaOrdine` è append-only *di default*, ma con due eccezioni deliberate,
-entrambe incapsulate in `GruppoInvio`/`RigaOrdine` (non solo a livello di
-controller, così qualunque chiamante rispetta gli stessi vincoli):
-
-- **Nota**: sempre modificabile (`RigaOrdine.aggiornaNote`), qualunque stato
-  del gruppo — comunicare un'informazione alla cucina non deve aspettare che
-  la portata sia ancora in coda.
-- **Aggiunta/rimozione di un'intera voce**: permessa solo se
-  `GruppoInvio.puoModificareVoci()` è vero, cioè stato `TRATTENUTO` o
-  `IN_CODA` — il gruppo non è ancora stato visto dalla cucina. Da `IN_PREP`
-  in poi lancia `IllegalStateException` (409). Il prezzo di una voce
-  aggiunta successivamente resta congelato al momento dell'aggiunta, mai
-  retroattivo (stessa regola del sync iniziale, vedi `ComandaSyncService`).
+`RigaOrdine` è append-only *di default*, ma con un'eccezione deliberata,
+incapsulata in `GruppoInvio`/`RigaOrdine` (non solo a livello di
+controller, così qualunque chiamante rispetta lo stesso vincolo): nota e
+voce intera (aggiunta/rimozione) sono modificabili solo se
+`GruppoInvio.puoModificare()` è vero, cioè stato `TRATTENUTO` o `IN_CODA`
+— il gruppo non è ancora stato visto dalla cucina. Da `IN_PREP` in poi
+qualunque modifica lancia `IllegalStateException` (409): una nota
+comunicata dopo che la cucina ha già iniziato a lavorare la portata non la
+raggiungerebbe in tempo utile. Il prezzo di una voce aggiunta
+successivamente resta congelato al momento dell'aggiunta, mai retroattivo
+(stessa regola del sync iniziale, vedi `ComandaSyncService`).
 
 Aggiungere/togliere righe non altera lo stato del gruppo, `seq_coda` né la
 logica di fire-on-ready (`CoursingService`): sono ortogonali alla state

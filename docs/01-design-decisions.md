@@ -15,12 +15,12 @@ sezione analytics per l'admin.
 - **Fire-on-ready è cucina-driven, non cameriere-driven.** Il cameriere non
   decide quando "sparare" la portata successiva: lo decide il completamento
   della portata precedente, segnalato dalla cucina (`segnaPronto`).
-- **Le righe d'ordine sono append-only, con due eccezioni deliberate.**
-  La nota di una riga è sempre modificabile; una voce intera si può
-  aggiungere/rimuovere solo finché il gruppo non è ancora in preparazione
-  (vedi `GruppoInvio.puoModificareVoci` in docs/02-domain-model.md). Da
-  `IN_PREP` in poi la comanda torna append-only: nessuna correzione
-  retroattiva del prezzo congelato o delle voci già viste dalla cucina.
+- **Le righe d'ordine sono append-only, con un'eccezione deliberata.**
+  Nota e voce intera (aggiunta/rimozione) sono modificabili finché il
+  gruppo non è ancora in preparazione (vedi `GruppoInvio.puoModificare`
+  in docs/02-domain-model.md). Da `IN_PREP` in poi la comanda torna
+  append-only: nessuna correzione retroattiva del prezzo congelato o
+  delle voci/note già viste dalla cucina.
 - **Prezzi congelati al momento della presa comanda.** Il conto finale non
   ricalcola mai i prezzi correnti del menu: usa lo snapshot preso in ogni
   `RigaOrdine`.

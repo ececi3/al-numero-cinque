@@ -71,7 +71,7 @@ public class GruppoInvio {
      * Usato sia in creazione (il gruppo e' allora TRATTENUTO, quindi passa
      * sempre il controllo) sia per aggiungere una voce a una comanda gia'
      * inviata: in quel caso richiede che il gruppo non sia ancora in
-     * preparazione (vedi puoModificareVoci).
+     * preparazione (vedi puoModificare).
      */
     public RigaOrdine aggiungiRiga(MenuItem menuItem, int quantita, java.math.BigDecimal prezzoCongelato, String note) {
         verificaModificabileVoci();
@@ -90,16 +90,18 @@ public class GruppoInvio {
 
     /**
      * True se il gruppo non ha ancora iniziato la preparazione: solo in
-     * questa finestra ha senso aggiungere/togliere intere voci di menu,
-     * perche' la cucina non le ha ancora viste. Una volta IN_PREP (o oltre),
-     * solo le note restano modificabili (RigaOrdine.aggiornaNote).
+     * questa finestra ha senso modificare il contenuto delle sue righe
+     * (aggiungere/togliere una voce, cambiarne la nota), perche' la cucina
+     * non le ha ancora viste. Da IN_PREP in poi la comanda torna
+     * append-only: una nota comunicata dopo che la cucina ha gia' iniziato
+     * a lavorare la portata non la raggiungerebbe in tempo utile.
      */
-    public boolean puoModificareVoci() {
+    public boolean puoModificare() {
         return this.stato == StatoGruppo.TRATTENUTO || this.stato == StatoGruppo.IN_CODA;
     }
 
     private void verificaModificabileVoci() {
-        if (!puoModificareVoci()) {
+        if (!puoModificare()) {
             throw new IllegalStateException(
                     "Gruppo " + id + " in stato " + stato + ": le voci si possono aggiungere/rimuovere solo prima che la preparazione sia iniziata");
         }

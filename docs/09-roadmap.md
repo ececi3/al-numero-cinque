@@ -69,9 +69,9 @@
 - [x] **Stato delle portate aggiornato lato cameriere** via polling (il
       dispositivo cameriere non può ascoltare il feed WebSocket del KDS,
       riservato al ruolo CUCINA)
-- [x] **Modifica di una comanda già inviata**: nota sempre modificabile,
-      voci aggiungibili/rimovibili solo se il gruppo non è ancora in
-      preparazione (`GruppoInvio.puoModificareVoci`)
+- [x] **Modifica di una comanda già inviata**: nota e voci
+      aggiungibili/rimovibili/modificabili solo se il gruppo non è
+      ancora in preparazione (`GruppoInvio.puoModificare`)
 
 ## Prossimi passi
 

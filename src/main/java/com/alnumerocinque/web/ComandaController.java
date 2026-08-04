@@ -44,7 +44,7 @@ public class ComandaController {
 
     /**
      * Aggiunge una voce a un gruppo gia' inviato. 409 se il gruppo e' gia'
-     * in preparazione o oltre (GruppoInvio.puoModificareVoci).
+     * in preparazione o oltre (GruppoInvio.puoModificare).
      */
     @PostMapping("/gruppi/{gruppoId}/righe")
     @ResponseStatus(HttpStatus.CREATED)
@@ -60,7 +60,7 @@ public class ComandaController {
         return GruppoInvioResponse.of(comandaModificaService.rimuoviRiga(gruppoId, rigaId));
     }
 
-    /** Aggiorna la nota di una riga esistente. Sempre permesso, qualunque stato del gruppo. */
+    /** Aggiorna la nota di una riga esistente. Stesso vincolo di stato di aggiungiRiga/rimuoviRiga. */
     @PatchMapping("/righe/{rigaId}/note")
     @ResponseStatus(HttpStatus.OK)
     public void aggiornaNote(@PathVariable Long rigaId, @Valid @RequestBody AggiornaNoteRequest request) {

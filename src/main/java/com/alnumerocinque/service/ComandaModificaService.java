@@ -11,11 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Modifica di una comanda gia' inviata in cucina: aggiunta/rimozione di
- * un'intera voce di menu (solo se il gruppo non e' ancora in preparazione,
- * vedi GruppoInvio.puoModificareVoci) o aggiornamento della nota di una
- * riga esistente (sempre permesso, qualunque stato). Distinta da
- * ComandaSyncService, che riguarda solo l'assemblaggio iniziale della
- * comanda al sync.
+ * un'intera voce di menu o aggiornamento della nota di una riga esistente,
+ * entrambe permesse solo se il gruppo non e' ancora in preparazione (vedi
+ * GruppoInvio.puoModificare) — una nota comunicata dopo che la cucina ha
+ * gia' iniziato a lavorare la portata non la raggiungerebbe in tempo utile.
+ * Distinta da ComandaSyncService, che riguarda solo l'assemblaggio iniziale
+ * della comanda al sync.
  */
 @Service
 public class ComandaModificaService {

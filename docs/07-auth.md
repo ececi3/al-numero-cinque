@@ -71,6 +71,23 @@ accesso in un ambiente reale.
   fissa (12h) non c'è altro stato da gestire lato client dopo il logout —
   il dispositivo dovrà rifare login.
 
+## Frontend: wiring del token nel client API
+
+`frontend/src/api/client.ts` tiene `getToken`/`onUnauthorized` come
+closure a livello di modulo (fuori da React), configurate da
+`AuthProvider` (`frontend/src/auth/AuthContext.tsx`). Quella
+configurazione avviene **sincrona nel corpo del render di
+`AuthProvider`, non in un `useEffect`**: React monta sempre un genitore
+prima dei figli, ma esegue gli *effect* in ordine inverso (figli prima
+degli antenati). Se la configurazione fosse in un `useEffect`, una
+pagina che monta insieme all'`AuthProvider` (tipicamente subito dopo il
+login, o a un refresh diretto con token già in `localStorage`)
+lancerebbe la propria fetch iniziale prima che il token fosse agganciato
+al client — richiesta senza header `Authorization`, 403 anche con
+credenziali corrette, che sui browser reali (non mascherato dal doppio
+mount di React StrictMode in sviluppo) capitava in modo sistematico a
+ogni login/refresh.
+
 ## Non ancora implementato
 
 - Refresh token (token di breve durata + refresh separato): non necessario

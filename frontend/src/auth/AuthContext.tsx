@@ -31,16 +31,20 @@ function leggiStorage(): AuthState | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState | null>(() => leggiStorage())
 
-  useEffect(() => {
-    // Il client API e' un modulo condiviso al di fuori di React: va
-    // riconfigurato ogni volta che cambia lo stato di autenticazione, cosi'
-    // che le richieste in corso usino sempre il token corrente e un 401
-    // (token scaduto o revocato da un logout altrove) forzi il logout qui.
-    configureApiClient({
-      getToken: () => auth?.token ?? null,
-      onUnauthorized: () => setAuth(null),
-    })
-  }, [auth])
+  // Il client API e' un modulo condiviso al di fuori di React: sincrono nel
+  // corpo del render, NON in un useEffect. React chiama sempre la funzione
+  // componente di un genitore prima di montare i figli, ma esegue gli
+  // effect in ordine inverso (figli prima degli antenati): se questa
+  // configurazione fosse in un useEffect, un componente figlio che monta
+  // insieme all'AuthProvider (tipicamente subito dopo il login, quando
+  // cambia rotta) vedrebbe il proprio effect di fetch iniziale partire
+  // PRIMA che il token fosse stato agganciato al client — richiesta senza
+  // Authorization, 401/403 anche con login corretto. L'assegnazione qui è
+  // pura e idempotente, quindi è sicura anche se il render viene ripetuto.
+  configureApiClient({
+    getToken: () => auth?.token ?? null,
+    onUnauthorized: () => setAuth(null),
+  })
 
   useEffect(() => {
     if (auth) {

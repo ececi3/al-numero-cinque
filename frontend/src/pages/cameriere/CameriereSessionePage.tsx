@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import { useApiCall } from '../../api/useApiCall'
 import type {
+  GruppoInvioResponse,
   GruppoRequest,
   MenuItemResponse,
+  RigaKdsResponse,
   SessioneDettaglioResponse,
   SincronizzaComandaRequest,
   TavoloResponse,
@@ -35,6 +37,167 @@ function raggruppaPerCategoria(menu: MenuItemResponse[]): [string, MenuItemRespo
     gruppi.set(categoria, voci)
   }
   return [...gruppi.entries()].sort(([a], [b]) => a.localeCompare(b))
+}
+
+/**
+ * Una portata gia' sincronizzata, con i controlli di modifica: la nota di
+ * ogni riga si puo' sempre aggiungere/cambiare, aggiungere o togliere
+ * un'intera voce solo se la portata non e' ancora in preparazione (stesso
+ * vincolo imposto server-side da GruppoInvio.puoModificareVoci — i pulsanti
+ * spariscono qui solo per chiarezza, la fonte di verita' resta il backend).
+ */
+function PortataModificabile({
+  gruppo,
+  menuPerCategoria,
+  onCambiato,
+}: {
+  gruppo: GruppoInvioResponse
+  menuPerCategoria: [string, MenuItemResponse[]][]
+  onCambiato: () => void
+}) {
+  const modificabileVoci = gruppo.stato === 'TRATTENUTO' || gruppo.stato === 'IN_CODA'
+
+  const [noteBozza, setNoteBozza] = useState<Record<number, string>>({})
+  const [salvandoNotaId, setSalvandoNotaId] = useState<number | null>(null)
+  const [rimuovendoRigaId, setRimuovendoRigaId] = useState<number | null>(null)
+  const [nuovaVoceId, setNuovaVoceId] = useState<number | ''>('')
+  const [nuovaQuantita, setNuovaQuantita] = useState('1')
+  const [nuovaNota, setNuovaNota] = useState('')
+  const [aggiungendo, setAggiungendo] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+
+  function notaCorrente(riga: RigaKdsResponse) {
+    return riga.id in noteBozza ? noteBozza[riga.id] : (riga.note ?? '')
+  }
+
+  async function salvaNota(riga: RigaKdsResponse) {
+    setErrore(null)
+    setSalvandoNotaId(riga.id)
+    try {
+      await api.patch(`/api/comande/righe/${riga.id}/note`, { note: notaCorrente(riga) || undefined })
+      onCambiato()
+    } catch (err) {
+      setErrore(err instanceof ApiError ? err.message : 'Errore di rete')
+    } finally {
+      setSalvandoNotaId(null)
+    }
+  }
+
+  async function rimuoviVoce(riga: RigaKdsResponse) {
+    setErrore(null)
+    setRimuovendoRigaId(riga.id)
+    try {
+      await api.delete(`/api/comande/gruppi/${gruppo.id}/righe/${riga.id}`)
+      onCambiato()
+    } catch (err) {
+      setErrore(err instanceof ApiError ? err.message : 'Errore di rete')
+    } finally {
+      setRimuovendoRigaId(null)
+    }
+  }
+
+  async function aggiungiVoce() {
+    if (nuovaVoceId === '') return
+    setErrore(null)
+    setAggiungendo(true)
+    try {
+      await api.post(`/api/comande/gruppi/${gruppo.id}/righe`, {
+        menuItemId: nuovaVoceId,
+        quantita: Number(nuovaQuantita),
+        note: nuovaNota || undefined,
+      })
+      setNuovaVoceId('')
+      setNuovaQuantita('1')
+      setNuovaNota('')
+      onCambiato()
+    } catch (err) {
+      setErrore(err instanceof ApiError ? err.message : 'Errore di rete')
+    } finally {
+      setAggiungendo(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: '0.5rem' }}>
+      <strong>Portata {gruppo.numeroPortata}</strong>{' '}
+      <span className={`badge ${gruppo.stato.toLowerCase().replace('_', '-')}`}>{gruppo.stato}</span>
+      {errore && (
+        <div className="messaggio-errore" style={{ marginTop: '0.4rem' }}>
+          {errore}
+        </div>
+      )}
+      <table style={{ marginTop: '0.4rem' }}>
+        <thead>
+          <tr>
+            <th>Voce</th>
+            <th>Qtà</th>
+            <th>Note</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {gruppo.righe.map((riga) => (
+            <tr key={riga.id}>
+              <td>{riga.nome}</td>
+              <td>{riga.quantita}</td>
+              <td>
+                <input
+                  value={notaCorrente(riga)}
+                  onChange={(e) => setNoteBozza((bozza) => ({ ...bozza, [riga.id]: e.target.value }))}
+                  style={{ width: '9rem' }}
+                />
+              </td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <button
+                  className="pulsante secondario piccolo"
+                  disabled={salvandoNotaId === riga.id || notaCorrente(riga) === (riga.note ?? '')}
+                  onClick={() => salvaNota(riga)}
+                >
+                  Salva nota
+                </button>{' '}
+                {modificabileVoci && (
+                  <button
+                    className="pulsante secondario piccolo"
+                    disabled={rimuovendoRigaId === riga.id}
+                    onClick={() => rimuoviVoce(riga)}
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {modificabileVoci && (
+        <div className="elenco-azioni" style={{ marginTop: '0.5rem' }}>
+          <select value={nuovaVoceId} onChange={(e) => setNuovaVoceId(e.target.value ? Number(e.target.value) : '')}>
+            <option value="">Aggiungi voce…</option>
+            {menuPerCategoria.map(([categoria, voci]) => (
+              <optgroup key={categoria} label={categoria}>
+                {voci.map((voce) => (
+                  <option key={voce.id} value={voce.id}>
+                    {voce.nome}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            value={nuovaQuantita}
+            onChange={(e) => setNuovaQuantita(e.target.value)}
+            style={{ width: '4rem' }}
+          />
+          <input placeholder="Note" value={nuovaNota} onChange={(e) => setNuovaNota(e.target.value)} style={{ width: '9rem' }} />
+          <button className="pulsante secondario piccolo" disabled={nuovaVoceId === '' || aggiungendo} onClick={aggiungiVoce}>
+            {aggiungendo ? 'Aggiunta…' : 'Aggiungi'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function CameriereSessionePage() {
@@ -80,20 +243,24 @@ export function CameriereSessionePage() {
   // (es. "IN_CODA" anche quando la cucina ha gia' servito la portata).
   // Nessuna richiesta finche' l'apertura sessione stessa e' pendente (offline):
   // la sessione non esiste ancora lato server.
+  // Best-effort: usato sia dal polling periodico sia come callback dopo una
+  // modifica di comanda (aggiunta/rimozione voce, nota), per riflettere
+  // subito lo stato del server invece di aspettare il giro di polling
+  // successivo. Un fallimento di rete qui non blocca nulla: chi modifica la
+  // comanda mostra gia' il proprio errore, il prossimo polling recuperera'.
+  function sincronizzaConServer() {
+    api
+      .get<SessioneDettaglioResponse>(`/api/sessioni/${sessioneId}`)
+      .then((dettaglio) => {
+        sincronizzaComandeDaServer(sessioneId, dettaglio.comande)
+        setSessioneLocale(leggiSessioneLocale(sessioneId))
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
     if (!sessioneId || !sessioneLocale || sessioneLocale.pendente) return
-    const intervallo = setInterval(() => {
-      api
-        .get<SessioneDettaglioResponse>(`/api/sessioni/${sessioneId}`)
-        .then((dettaglio) => {
-          sincronizzaComandeDaServer(sessioneId, dettaglio.comande)
-          setSessioneLocale(leggiSessioneLocale(sessioneId))
-        })
-        .catch(() => {
-          // Rete assente o momentaneamente irraggiungibile: si ritenta al
-          // prossimo giro, senza disturbare il cameriere con un errore.
-        })
-    }, 10000)
+    const intervallo = setInterval(sincronizzaConServer, 10000)
     return () => clearInterval(intervallo)
     // sessioneLocale intenzionalmente escluso: dipende solo da .pendente
     // (già in dep array) per avviare/fermare il polling, non deve riavviare
@@ -332,22 +499,36 @@ export function CameriereSessionePage() {
         {sessioneLocale.comande.map((comanda) => (
           <div key={comanda.id} className="gruppo-kds">
             {comanda.pendente && <span className="badge trattenuto">in attesa di sync</span>}
-            {comanda.gruppi.map((gruppo) => {
-              const stato = comanda.statiGruppi?.find((g) => g.numeroPortata === gruppo.numeroPortata)?.stato
-              return (
-                <div key={gruppo.numeroPortata} style={{ marginTop: '0.5rem' }}>
-                  <strong>Portata {gruppo.numeroPortata}</strong>{' '}
-                  {stato && <span className={`badge ${stato.toLowerCase().replace('_', '-')}`}>{stato}</span>}
-                  <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.2rem' }}>
-                    {gruppo.righe.map((riga, i) => (
-                      <li key={i}>
-                        {riga.quantita}× {riga.nome} {riga.note && `(${riga.note})`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
+            {comanda.statiGruppi
+              ? // Comanda gia' sincronizzata: statiGruppi porta stato e id di
+                // ogni riga, necessari per modificarla. comanda.gruppi (la
+                // vista locale usata solo per il "carrello" prima dell'invio)
+                // non basta piu' qui.
+                comanda.statiGruppi
+                  .slice()
+                  .sort((a, b) => a.numeroPortata - b.numeroPortata)
+                  .map((gruppo) => (
+                    <PortataModificabile
+                      key={gruppo.id}
+                      gruppo={gruppo}
+                      menuPerCategoria={menuPerCategoria}
+                      onCambiato={sincronizzaConServer}
+                    />
+                  ))
+              : // Ancora in coda di sync offline: nessun id server su cui
+                // agire, si mostra solo il contenuto inserito dal cameriere.
+                comanda.gruppi.map((gruppo) => (
+                  <div key={gruppo.numeroPortata} style={{ marginTop: '0.5rem' }}>
+                    <strong>Portata {gruppo.numeroPortata}</strong>
+                    <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.2rem' }}>
+                      {gruppo.righe.map((riga, i) => (
+                        <li key={i}>
+                          {riga.quantita}× {riga.nome} {riga.note && `(${riga.note})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
           </div>
         ))}
       </div>

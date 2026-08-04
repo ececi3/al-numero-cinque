@@ -108,6 +108,7 @@ export interface SincronizzaComandaRequest {
 }
 
 export interface RigaKdsResponse {
+  id: number
   menuItemId: number
   nome: string
   quantita: number

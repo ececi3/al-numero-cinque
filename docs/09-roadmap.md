@@ -74,6 +74,11 @@
       ancora in preparazione (`GruppoInvio.puoModificare`), con evento
       outbox (`GRUPPO_RIGHE_AGGIORNATE`) ad ogni modifica cosi' il KDS si
       aggiorna in tempo reale, non solo al prossimo refresh manuale
+- [x] **Conto della sessione** (`GET /api/sessioni/{id}/conto`): somma di
+      `prezzoCongelato * quantita` su tutte le righe d'ordine della
+      sessione, aggregate per voce di menu e prezzo congelato;
+      consultabile lato cameriere in qualunque momento, utile prima di
+      chiedere la chiusura del tavolo
 
 ## Prossimi passi
 

@@ -3,6 +3,7 @@ package com.alnumerocinque.web;
 import com.alnumerocinque.security.AuthenticatedUser;
 import com.alnumerocinque.service.SessioneService;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
+import com.alnumerocinque.web.dto.ContoResponse;
 import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
 import com.alnumerocinque.web.dto.SessioneResponse;
 import jakarta.validation.Valid;
@@ -59,5 +60,11 @@ public class SessioneController {
     @GetMapping("/per-tavolo/{tavoloId}")
     public SessioneDettaglioResponse dettaglioPerTavolo(@PathVariable Long tavoloId) {
         return sessioneService.dettaglioPerTavolo(tavoloId);
+    }
+
+    /** Totale da pagare per la sessione, consultabile in qualunque momento (vedi SessioneService.conto). */
+    @GetMapping("/{id}/conto")
+    public ContoResponse conto(@PathVariable UUID id) {
+        return sessioneService.conto(id);
     }
 }

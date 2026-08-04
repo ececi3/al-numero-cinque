@@ -153,6 +153,22 @@ export interface SessioneDettaglioResponse {
   comande: ComandaResponse[]
 }
 
+export interface VoceContoResponse {
+  menuItemId: number
+  nome: string
+  quantita: number
+  prezzoUnitario: number
+  totaleVoce: number
+}
+
+export interface ContoResponse {
+  sessioneId: string
+  tavoloId: number
+  numeroCoperti: number
+  voci: VoceContoResponse[]
+  totale: number
+}
+
 export interface TempoPreparazionePortata {
   numeroPortata: number
   minutiMediPreparazione: number

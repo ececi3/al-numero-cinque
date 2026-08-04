@@ -11,6 +11,7 @@ import com.alnumerocinque.repository.SessioneRepository;
 import com.alnumerocinque.repository.TavoloAggregatoRepository;
 import com.alnumerocinque.repository.TavoloRepository;
 import com.alnumerocinque.web.dto.ApriSessioneRequest;
+import com.alnumerocinque.web.dto.ContoResponse;
 import com.alnumerocinque.web.dto.SessioneDettaglioResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -138,6 +139,18 @@ public class SessioneService {
         Sessione sessione = sessioneRepository.findApertaPerTavolo(tavoloId)
                 .orElseThrow(() -> new IllegalArgumentException("Nessuna sessione aperta per il tavolo: " + tavoloId));
         return dettaglio(sessione.getId());
+    }
+
+    /**
+     * Conto della sessione: puo' essere consultato in qualunque momento
+     * (anche con portate ancora in coda/preparazione), utile al cameriere
+     * prima di chiedere la chiusura del tavolo.
+     */
+    @Transactional(readOnly = true)
+    public ContoResponse conto(UUID sessioneId) {
+        Sessione sessione = sessioneRepository.findById(sessioneId)
+                .orElseThrow(() -> new IllegalArgumentException("Sessione non trovata: " + sessioneId));
+        return ContoResponse.of(sessione, comandaRepository.findBySessione(sessione));
     }
 
     private Sessione creaNuovaSessione(ApriSessioneRequest request, Long cameriereId) {

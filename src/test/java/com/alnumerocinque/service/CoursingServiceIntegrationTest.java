@@ -139,6 +139,34 @@ class CoursingServiceIntegrationTest {
         assertThat(eventi).allMatch(e -> !e.isPubblicato());
     }
 
+    /**
+     * Regressione: senza un flush esplicito prima del fire, il gruppo appena
+     * creato via cascade da una comanda non ancora persistita ha id
+     * IDENTITY non assegnato (null) nel momento in cui l'evento GRUPPO_IN_CODA
+     * viene costruito, cosi' come le sue righe. Il payload outbox conterrebbe
+     * "gruppoInvioId":null, e il KDS (che fa dedup per id, vedi
+     * KdsPage.applicaEvento) lo mostrerebbe come una card fantasma separata
+     * da quella reale invece di aggiornarla — es. dopo una modifica nota
+     * immediatamente successiva all'invio, la stessa comanda comparirebbe
+     * due volte in coda cucina.
+     */
+    @Test
+    void registraComanda_eventoInCoda_haGruppoInvioIdERigheIdValorizzati() {
+        Comanda o1 = nuovaComanda(nuovaSessione(), 1);
+        Comanda registrata = coursingService.registraComanda(o1);
+        GruppoInvio gruppo = registrata.getGruppi().get(0);
+
+        List<OutboxEvent> eventi = outboxEventRepository.findByPublishedAtIsNullOrderByIdAsc();
+        OutboxEvent eventoInCoda = eventi.stream()
+                .filter(e -> e.getEventType().equals("GRUPPO_IN_CODA"))
+                .findFirst().orElseThrow();
+
+        assertThat(eventoInCoda.getPayload())
+                .contains("\"gruppoInvioId\":" + gruppo.getId())
+                .doesNotContain("\"gruppoInvioId\":null")
+                .doesNotContain("\"id\":null");
+    }
+
     @Test
     void registraComanda_eIdempotenteSuRetryDopoAckPerso() {
         Comanda o1 = nuovaComanda(nuovaSessione(), 1);

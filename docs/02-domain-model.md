@@ -67,6 +67,24 @@ raggiungerebbe in tempo utile. Il prezzo di una voce aggiunta
 successivamente resta congelato al momento dell'aggiunta, mai retroattivo
 (stessa regola del sync iniziale, vedi `ComandaSyncService`).
 
+## Trappola ricorrente: id IDENTITY e eventi outbox
+
+`GruppoInvio`/`RigaOrdine` usano `GenerationType.IDENTITY`: l'id resta
+`null` finché l'INSERT non viene eseguito (Hibernate lo rimanda al flush).
+Qualunque evento outbox costruito da un'entità appena creata nella STESSA
+transazione (`GruppoInvioEventPayload.of`) deve quindi essere emesso *dopo*
+un flush esplicito, altrimenti cattura `gruppoInvioId: null` — il feed
+WebSocket del KDS (dedup per id, vedi `KdsPage.applicaEvento`) lo
+renderebbe come una card fantasma separata invece di aggiornare quella
+reale. `CoursingService.registraComanda` ci è già cascata una volta (fix:
+`saveAndFlush` prima del fire, **operando sul valore di ritorno** — `Comanda`
+ha id assegnato dal client, non generato, quindi `save()` passa da
+`entityManager.merge()`, che restituisce una nuova istanza managed e lascia
+l'originale transiente invariato); `ComandaModificaService.aggiungiRiga` ha
+lo stesso pattern per lo stesso motivo. Attenzione a non reintrodurla in
+punti nuovi che emettono un evento su un'entità cascata-creata nella stessa
+transazione.
+
 ## Conto della sessione
 
 Non è un'entità persistita: `ContoResponse` (`SessioneService.conto`) è un
